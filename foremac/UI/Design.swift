@@ -27,7 +27,11 @@ enum D {
 
     static let ink        = Color(red: 0.945, green: 0.953, blue: 0.973)  // primary text
     static let inkSoft    = Color(red: 0.671, green: 0.702, blue: 0.769)  // explanation text
-    static let inkFaint   = Color(red: 0.404, green: 0.435, blue: 0.510)  // timestamps, asides
+    /// Recessive text. Measured 5.24:1 against `bg` — passes WCAG AA (4.5:1)
+    /// for normal-size text. The earlier value was 3.49:1, which failed, and
+    /// it was carrying the safety promises on the permission screen: the text
+    /// meant to earn someone's trust was the hardest to read on the panel.
+    static let inkFaint   = Color(red: 0.520, green: 0.550, blue: 0.620)
 
     /// All is well. A muted sage — present, unshowy, never a "success green".
     static let calm       = Color(red: 0.549, green: 0.702, blue: 0.596)

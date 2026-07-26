@@ -33,6 +33,7 @@ struct PermissionPanel: View {
                     Circle()
                         .fill(D.attention)
                         .frame(width: 5, height: 5)
+                        .accessibilityHidden(true)
                     Text("One thing first")
                         .font(D.label(11))
                         .tracking(1.1)
@@ -96,14 +97,17 @@ private struct Promise: View {
         HStack(spacing: 9) {
             Image(systemName: good ? "arrow.right" : "xmark")
                 .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(good ? D.calm : D.inkFaint)
+                .foregroundStyle(good ? D.calm : D.inkSoft)
                 .frame(width: 13, height: 13)
                 .background(
-                    Circle().fill((good ? D.calm : D.inkFaint).opacity(0.14))
+                    Circle().fill((good ? D.calm : D.inkSoft).opacity(0.14))
                 )
             Text(text)
                 .font(D.body(13))
-                .foregroundStyle(good ? D.inkSoft : D.inkFaint)
+                // Both kinds use inkSoft: these four lines are what earn the
+                // Yes, so neither the promises nor the "never" lines may be the
+                // faintest text on the screen.
+                .foregroundStyle(D.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -121,6 +125,8 @@ struct PermissionPendingPanel: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 7) {
                 Circle().fill(D.attention).frame(width: 5, height: 5)
+                    .accessibilityHidden(true)
+                        .accessibilityHidden(true)
                 Text("Waiting for you")
                     .font(D.label(11))
                     .tracking(1.1)

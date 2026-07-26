@@ -26,6 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var hotKeyRef: EventHotKeyRef?
+
+    /// The key combination we actually got, for showing in the UI. nil when
+    /// every candidate was already taken by another app.
+    private(set) var hotKeyLabel: String? = "\u{2325}\u{2318}R"
     private var model = VerdictModel()
     private var verdictObserver: AnyCancellable?
 
@@ -176,10 +180,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return noErr
         }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &handler)
 
-        let id = EventHotKeyID(signature: OSType(0x464D4143), id: 1)  // 'FMAC'
-        RegisterEventHotKey(UInt32(kVK_ANSI_R),
-                            UInt32(optionKey | cmdKey),
-                            id, GetApplicationEventTarget(), 0, &hotKeyRef)
+        // Try ⌥⌘R first, then a fallback, because plenty of window tools already
+        // own ⌥⌘R. If registration fails and we ignore it, the rescue key does
+        // nothing for ever and never says why — which is the exact silent
+        // failure this app exists to correct. So we check, and we report.
+        let candidates: [(UInt32, UInt32, String)] = [
+            (UInt32(kVK_ANSI_R), UInt32(optionKey | cmdKey),            "\u{2325}\u{2318}R"),
+            (UInt32(kVK_ANSI_R), UInt32(optionKey | cmdKey | shiftKey), "\u{2325}\u{21E7}\u{2318}R"),
+            (UInt32(kVK_ANSI_W), UInt32(optionKey | cmdKey | shiftKey), "\u{2325}\u{21E7}\u{2318}W")
+        ]
+
+        for (i, c) in candidates.enumerated() {
+            let id = EventHotKeyID(signature: OSType(0x464D4143), id: UInt32(i + 1))
+            let err = RegisterEventHotKey(c.0, c.1, id,
+                                          GetApplicationEventTarget(), 0, &hotKeyRef)
+            if err == noErr, hotKeyRef != nil {
+                hotKeyLabel = c.2
+                if i > 0 {
+                    RepairLog.write(event: "hotkey_fallback",
+                                    detail: ["using": c.2, "reason": "preferred key taken"])
+                }
+                return
+            }
+        }
+
+        // Nothing worked. Say so in the log and remember it, so the app can be
+        // honest about it rather than pretending it has a rescue key.
+        hotKeyLabel = nil
+        RepairLog.write(event: "hotkey_unavailable",
+                        detail: ["reason": "every candidate combination is taken"])
     }
 
     fileprivate func rescuePressed() {
