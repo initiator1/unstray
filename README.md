@@ -6,6 +6,8 @@ it back, and tells you what happened in plain words.
 It lives in the bar at the top of your screen and stays out of the way until it
 is needed.
 
+<img src="docs/images/permission.png" width="380" alt="unstray asking for permission, explaining in plain words what it will and will not do">
+
 ---
 
 ## The problem
