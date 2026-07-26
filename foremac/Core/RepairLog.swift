@@ -4,8 +4,8 @@ import Foundation
 ///
 /// Two readers:
 ///   - a future me, working out why something regressed
-///   - Aria, who can use "his Mac hid things from him again after the 26.6
-///     update" as real context about BOSS's day
+///   - any assistant tool that wants to know "the Mac hid things again after
+///     update" as real context about the day
 ///
 /// Technical detail belongs here, never on screen. Coordinates, defaults keys,
 /// and Apple Feedback numbers all live in this file.

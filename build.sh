@@ -62,8 +62,10 @@ fi
 # silently stops being able to move anything — the precise failure mode this
 # app exists to fix. Signing with Developer ID keeps one identity forever, so
 # the permission is granted once and stays granted.
-SIGN_ID="${FOREMAC_SIGN_ID:-Developer ID Application: Douglas Baker (MDWFZC6396)}"
-if security find-identity -v -p codesigning 2>/dev/null | grep -q "$SIGN_ID"; then
+# Auto-detect the first Developer ID on this machine; override with FOREMAC_SIGN_ID.
+SIGN_ID="${FOREMAC_SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null \
+  | grep -o "Developer ID Application: .*" | head -1 | sed 's/"$//')}"
+if [ -n "$SIGN_ID" ] && security find-identity -v -p codesigning 2>/dev/null | grep -qF "$SIGN_ID"; then
   codesign --force --deep --options runtime --sign "$SIGN_ID" "$APP"
   echo "signed with: $SIGN_ID"
 else

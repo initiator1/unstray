@@ -60,7 +60,7 @@ struct VerdictView: View {
 
 // MARK: - Nothing is wrong
 //
-// This is the screen BOSS sees almost every time, so it gets the most care, not
+// This is the screen people see almost every time, so it gets the most care, not
 // the least. It must feel like reassurance rather than an empty state — the
 // answer to "is it me?" is "no, and here is proof I looked."
 
@@ -114,7 +114,7 @@ private struct AllWellPanel: View {
                 // nothing is wrong the only thing left to do is close this.
                 // It must always be here: the rescue key can open this panel
                 // sticky, and a sticky panel whose only buttons are "Check
-                // again" and "Quit" is a trap — BOSS got stuck in exactly that.
+                // again" and "Quit" is a trap — real users got stuck in exactly that.
                 Button("Done", action: onDismiss)
                     .buttonStyle(FMButton(role: .primary, tint: D.calm))
                 Button("Check again", action: onRecheck)
