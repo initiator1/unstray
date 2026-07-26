@@ -30,6 +30,11 @@ struct Finding: Identifiable, Equatable {
     /// Example: "Your other screens go black when you make a video full screen."
     let headline: String
 
+    /// Set when a macOS update is what caused this. Answers the question the
+    /// person is actually asking — "why has this started happening now?" —
+    /// which is otherwise the most bewildering part of the whole experience.
+    var blamesOSUpdate: Bool = false
+
     /// Why it is happening, in a few short lines. Must survive the read-aloud test.
     let explanation: String
 

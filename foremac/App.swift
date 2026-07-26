@@ -35,8 +35,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registerHotKey()
         observeSystemEvents()
 
+        Lifecycle.enableLaunchAtLoginOnce()
+
+        // A macOS update is exactly when settings drift, so look straight away
+        // and be ready to say that the update is what changed things.
+        model.blameUpdate = Lifecycle.didOSUpdateSinceLastRun()
         model.recheck()
-        RepairLog.write(event: "launched")
+
+        // If the update broke something, do not wait to be asked — open and
+        // say so. This is the one time the app is allowed to interrupt.
+        if model.blameUpdate, case .somethingWrong = model.verdict {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                self?.showPanel()
+            }
+        }
+
+        RepairLog.write(event: "launched", detail: [
+            "os": Lifecycle.currentOSVersion,
+            "afterUpdate": model.blameUpdate,
+            "launchesAtLogin": Lifecycle.launchesAtLogin
+        ])
     }
 
     // MARK: - The picture in the bar
@@ -153,24 +171,48 @@ final class VerdictModel: ObservableObject {
 
     private var permissionPoll: Timer?
 
+    /// Set once at launch when macOS has changed since we last ran, so the
+    /// first check after an update can name the culprit.
+    var blameUpdate = false
+
     func recheck(reason: String? = nil) {
-        // Without permission we cannot move anything, so reporting problems we
-        // are unable to fix would be a UI that promises what it cannot deliver.
-        guard WindowRescue.hasPermission else {
-            verdict = .needsPermission
-            return
+        let permitted = WindowRescue.hasPermission
+        if permitted {
+            awaitingPermission = false
+            stopPolling()
         }
-        awaitingPermission = false
-        stopPolling()
 
-        let findings = SettingsCheck.runAll() + [WindowScan.check()].compactMap { $0 }
+        // Settings problems need no permission to find OR to fix — only moving
+        // things does. So always check them. Someone who said "not yet" must
+        // still be told their Mac blacked out their screens; going quiet would
+        // repeat the exact failure this app exists to correct.
+        var findings = SettingsCheck.runAll()
+        if permitted, let stranded = WindowScan.check() {
+            findings.append(stranded)
+        }
 
-        if findings.isEmpty {
-            verdict = .allWell(lastCheckedDescription: "Checked just now")
-        } else {
+        // If macOS changed under us and something is now wrong, say so. "Your
+        // Mac updated itself and changed this" is the answer to the question
+        // they are really asking, which is why this started happening today.
+        if blameUpdate, !findings.isEmpty {
+            for i in findings.indices where findings[i].kind != .strandedWindows {
+                findings[i].blamesOSUpdate = true
+            }
+        }
+
+        if !findings.isEmpty {
+            // A problem we can fix outranks asking for permission — fixing the
+            // settings needs no permission, so get on with it.
             let sorted = findings.sorted { $0.severity < $1.severity }
             verdict = .somethingWrong(primary: sorted[0], alsoFound: Array(sorted.dropFirst()))
             RepairLog.found(sorted)
+        } else if !permitted {
+            // Nothing wrong that we can see — but without permission we cannot
+            // see everything, and could not rescue anything. Say so honestly
+            // rather than claiming an all-clear we have not earned.
+            verdict = .needsPermission
+        } else {
+            verdict = .allWell(lastCheckedDescription: "Checked just now")
         }
         if let reason { RepairLog.write(event: "rechecked", detail: ["reason": reason]) }
     }

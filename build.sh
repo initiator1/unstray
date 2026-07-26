@@ -35,6 +35,7 @@ swiftc -O \
   foremac/Core/WindowScan.swift \
   foremac/Core/WindowRescue.swift \
   foremac/Core/RepairLog.swift \
+  foremac/Core/Lifecycle.swift \
   foremac/UI/Design.swift \
   foremac/UI/ScreenDiagram.swift \
   foremac/UI/PermissionPanel.swift \
