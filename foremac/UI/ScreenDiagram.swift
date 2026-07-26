@@ -90,5 +90,22 @@ struct ScreenDiagram: View {
             }
         }
         .frame(height: 92)
+        // Said out loud for anyone using VoiceOver. The picture IS the
+        // explanation for sighted people, so it has to say the same thing in
+        // words rather than announcing a pile of unlabelled shapes.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenDescription)
+    }
+
+    /// What this picture means, in the same plain words the panel uses.
+    private var spokenDescription: String {
+        let n = screens.count
+        let screenWord = n == 1 ? "1 screen" : "\(n) screens"
+        if strayCount == 0 {
+            return "A picture of your \(screenWord). Everything is on a screen you can see."
+        }
+        let thing = strayCount == 1 ? "1 thing" : "\(strayCount) things"
+        return "A picture of your \(screenWord), with \(thing) sitting outside them, "
+             + "where no screen can reach."
     }
 }

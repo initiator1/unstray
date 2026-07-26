@@ -25,7 +25,22 @@ enum RepairLog {
         return f
     }()
 
+    /// Anything past this and we start again. Without a cap the file grows for
+    /// ever, and a log nobody can read is not a log.
+    private static let maxBytes = 256 * 1024
+
+    private static func trimIfHuge() {
+        guard let a = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = a[.size] as? Int, size > maxBytes else { return }
+        // Keep the most recent half; simplest thing that cannot corrupt a line.
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return }
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: true)
+        let kept = lines.suffix(lines.count / 2).joined(separator: "\n") + "\n"
+        try? kept.write(to: url, atomically: true, encoding: .utf8)
+    }
+
     static func write(event: String, detail: [String: Any] = [:]) {
+        trimIfHuge()
         var row: [String: Any] = [
             "at": iso.string(from: Date()),
             "event": event,
@@ -44,15 +59,25 @@ enum RepairLog {
             try? h.write(contentsOf: Data(line.utf8))
         } else {
             try? line.write(to: url, atomically: true, encoding: .utf8)
+            // Owner-only: this is a record of your own machine's behaviour and
+            // no other account has any business reading it.
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o600], ofItemAtPath: url.path)
         }
     }
 
+    /// Records WHAT kind of problem was found, never WHICH apps or where.
+    ///
+    /// An earlier version wrote `technicalNote` straight to disk, which meant
+    /// the file accumulated a permanent, timestamped record of which apps you
+    /// had open and their positions. Nobody agreed to that, and the permission
+    /// screen's promises do not prepare anyone for it. Names and coordinates
+    /// now stay in memory and never reach the file.
     static func found(_ findings: [Finding]) {
         guard !findings.isEmpty else { return }
         write(event: "found", detail: [
             "count": findings.count,
-            "kinds": findings.map { $0.kind.rawValue },
-            "notes": findings.map { $0.technicalNote }
+            "kinds": findings.map { $0.kind.rawValue }
         ])
     }
 
@@ -60,7 +85,6 @@ enum RepairLog {
         write(event: "repaired", detail: [
             "kind": f.kind.rawValue,
             "success": success,
-            "note": f.technicalNote,
             "neededLogout": f.costWarning != nil
         ])
     }

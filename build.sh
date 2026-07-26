@@ -69,8 +69,19 @@ if [ -n "$SIGN_ID" ] && security find-identity -v -p codesigning 2>/dev/null | g
   codesign --force --deep --options runtime --sign "$SIGN_ID" "$APP"
   echo "signed with: $SIGN_ID"
 else
-  codesign --force --deep --sign - "$APP" 2>/dev/null || true
+  # Ad-hoc fallback. Never swallow the failure: an unsigned bundle that reports
+  # "built" is exactly the kind of silent failure this app exists to fix.
+  if ! codesign --force --deep --sign - "$APP"; then
+    echo "ERROR: code signing failed — refusing to ship an unsigned bundle" >&2
+    exit 1
+  fi
   echo "WARNING: signed ad-hoc — Accessibility permission will be revoked on every rebuild"
+fi
+
+# Prove it actually got signed rather than trusting the exit code alone.
+if ! codesign --verify --deep --strict "$APP" 2>/dev/null; then
+  echo "ERROR: signature verification failed" >&2
+  exit 1
 fi
 echo "built: $APP"
 
