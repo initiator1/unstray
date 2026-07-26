@@ -100,6 +100,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.performClose(nil)
         } else {
             model.recheck()
+            // A panel showing a problem must not vanish when the person clicks
+            // the very app they are trying to rescue. Only the all-clear panel
+            // is safe to dismiss by clicking away — losing that costs nothing.
+            let hasProblem: Bool
+            if case .allWell = model.verdict { hasProblem = false } else { hasProblem = true }
+            popover.behavior = hasProblem ? .applicationDefined : .transient
             popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
