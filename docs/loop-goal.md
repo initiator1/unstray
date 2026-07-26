@@ -82,18 +82,18 @@ Practical consequences — I do not get to skip these:
 
 All of these true:
 
-- [ ] Checks the three load-bearing settings and reports drift in plain language
-- [ ] Fixes them on request, warning about logout *before* the button is pressed
-- [ ] Finds things that are open but unreachable, and brings them back
-- [ ] A rescue hotkey that works from a background process
+- [x] Checks the three load-bearing settings and reports drift in plain language
+- [x] Fixes them on request, warning about logout *before* the button is pressed
+- [x] Finds things that are open but unreachable, and brings them back
+- [x] A rescue hotkey that works from a background process
       (`SetFrontProcessWithOptions`, since cooperative activation silently fails)
-- [ ] Re-checks automatically after a macOS update — the recurring job
-- [ ] Every explanation passes the read-aloud test in `docs/plain-language.md`
-- [ ] Visually verified with screenshots at the real size on the real screen
-- [ ] Menu-bar app, launches at login, invisible until needed
-- [ ] Writes JSONL where Aria can read it
-- [ ] CLAUDE.md, SPEC.md, PLAN.md written and current
-- [ ] Git history: small commits, each one revertable alone
+- [x] Re-checks automatically after a macOS update — the recurring job
+- [x] Every explanation passes the read-aloud test in `docs/plain-language.md`
+- [x] Visually verified with screenshots at the real size on the real screen
+- [x] Menu-bar app, launches at login, invisible until needed
+- [x] Writes JSONL where Aria can read it
+- [x] CLAUDE.md, SPEC.md, PLAN.md written and current
+- [x] Git history: small commits, each one revertable alone
 
 ## Stop conditions
 
@@ -113,3 +113,25 @@ Read any screen of this app out loud to someone who has never used a computer.
 
 If they can say back what happened and what to press, it passes.
 If they ask "what's a window?" — rewrite it.
+
+
+---
+
+## Outcome (2026-07-26)
+
+Every box above is ticked and verified on the real machine, not in theory.
+
+The loop earned its keep on the last iteration: the rescue hotkey was logged as
+firing but never moved anything, because `gatherFrontmostApp()` asked for the
+frontmost app *after* macOS had made foremac frontmost. The engine test passed
+while the feature was broken end to end — only pressing the actual keys found
+it. Fixed with `ActivityWatch`.
+
+Bugs found by using the thing rather than reading it:
+1. Ad-hoc signing silently revoked Accessibility on every rebuild
+2. Panels vanished on a stray click, twice (BOSS hit both)
+3. `recheck()` short-circuited without permission, hiding settings problems
+4. The icon read as a smiley face
+5. The rescue hotkey rescued foremac itself
+
+Stopping here. The app is done.
