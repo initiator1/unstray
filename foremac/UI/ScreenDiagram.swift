@@ -27,15 +27,21 @@ struct ScreenDiagram: View {
     var body: some View {
         GeometryReader { geo in
             let b = bounds
-            // Leave room on the left for the stray shape to sit outside.
-            // When something is stranded, hold the screens well clear of the
-            // left edge so the stray shapes read as genuinely *outside* them.
-            let inset: CGFloat = strayCount > 0 ? 62 : 8
+            // Room on the LEFT only, for the stray shapes to sit outside the
+            // screens. Reserving it on both sides wasted half the canvas on a
+            // single-screen Mac — which is most people — and shrank the screen
+            // to a stamp. The right edge needs only a normal margin.
+            let leftInset: CGFloat = strayCount > 0 ? 62 : 8
+            let rightInset: CGFloat = 8
+            // One screen is a tall shape with no row to fit into, so it can use
+            // nearly the full height. A row of screens needs breathing room.
+            let vPad: CGFloat = screens.count == 1 ? 6 : 16
             let scale = (b.width > 0 && b.height > 0)
-                ? min((geo.size.width - inset * 2) / b.width,
-                      (geo.size.height - 16) / b.height)
+                ? min((geo.size.width - leftInset - rightInset) / b.width,
+                      (geo.size.height - vPad) / b.height)
                 : 0
-            let ox = (geo.size.width - b.width * scale) / 2
+            // Centre within the space left over after the stray gutter.
+            let ox = leftInset + (geo.size.width - leftInset - rightInset - b.width * scale) / 2
             let oy = (geo.size.height - b.height * scale) / 2
 
             ZStack(alignment: .topLeading) {
