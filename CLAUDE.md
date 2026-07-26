@@ -40,7 +40,23 @@ foremac/UI/
   VerdictView.swift      Healthy and problem panels.
   PermissionPanel.swift  Asking for Accessibility without frightening anyone.
 foremac/App.swift        Menu bar, hotkey, VerdictModel.
+assets/                  App icon (gpt-image-2 via Codex's native image_gen).
+                         foremac-1024.png is the master; .icns is built from it.
 ```
+
+## Icon
+
+Regenerate with Codex's **native `image_gen`** tool (gpt-image-2, runs on the
+ChatGPT OAuth, no API key). Never the imagegen skill's `image_gen.py` CLI, and
+never hand-rolled SVG/CSS art. After generating, rebuild:
+
+```bash
+iconutil -c icns assets/foremac.iconset -o assets/foremac.icns && ./build.sh
+```
+
+Direction: dark-matte squircle, deep blue-slate, warm amber thin-line screens
+with one rectangle apart being drawn back — same palette as the app itself.
+Motif should fill ~80–85% of the tile. Check legibility at 32px.
 
 ## The three settings this app watches
 
