@@ -49,9 +49,10 @@ A utility is not.
       Sequoia. Homebrew also
       [removes non-notarized casks](https://workbrew.com/blog/homebrew-5-0-0)
       from the official tap in **September 2026**.
-- [ ] **Test on a single-display Mac.** Most users have one screen. The screen
-      picture, the "all 3 of your screens" sentence, and the stray-shape layout
-      were all built and verified on a three-display machine.
+- [~] **Single-display Mac.** The layout bug this exposed is fixed and covered
+      by tests, and the copy is verified for 1/2/3 screens. Still wants one real
+      run on a one-screen Mac before launch — the maths is right, but nobody has
+      looked at it.
 - [x] **Byline decided.** Copyright INITIATOR LLC (Delaware, good standing since
       2020), maintained publicly by [@initiator1](https://github.com/initiator1).
       The entity is a liability shield, not a privacy measure — it is public
@@ -66,9 +67,9 @@ A utility is not.
 
 ## Should do before launch
 
-- [ ] Unit tests for the pure logic: `WindowScan` geometry, `SettingsCheck`
-      parsing, `Lifecycle` version drift, verdict precedence. There are
-      currently none, guarding the app's actual reason for existing.
+- [x] Unit tests for the pure logic — 33 checks covering reachability, window
+      filtering, settings interpretation, severity order, version drift,
+      headline wording, and diagram layout. `./run-tests.sh`.
 - [ ] Surface repair failures. `repair()` returns a Bool that is logged but
       never shown; if a fix fails the same panel simply reappears.
 - [x] Version number visible in the UI, and a `CHANGELOG.md`.

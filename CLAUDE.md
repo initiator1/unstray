@@ -15,6 +15,10 @@ Distribution strategy and the pre-launch checklist: [docs/launch-plan.md](docs/l
 open build/foremac.app
 ```
 
+```bash
+./run-tests.sh              # 33 core logic tests, ~1 second
+```
+
 No Xcode project — `swiftc` straight to a bundle. A menu-bar app does not need
 more, and the repo stays readable. **New source files must be added to
 `build.sh` by hand**; there is no target to fall back on.
