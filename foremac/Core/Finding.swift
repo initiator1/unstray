@@ -61,7 +61,7 @@ enum Verdict: Equatable {
     /// reporting problems we are unable to fix.
     case needsPermission
 
-    /// Nothing is wrong. This is what BOSS sees almost every time, so it gets
+    /// Nothing is wrong. This is what people see almost every time, so it gets
     /// the most design care, not the least.
     case allWell(lastCheckedDescription: String)
 
