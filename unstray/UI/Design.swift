@@ -62,7 +62,7 @@ enum D {
 /// Filled when it is the thing to do, quiet when it is the way out. Never two
 /// loud buttons competing — the person should never have to decide which of two
 /// bright things to press.
-struct FMButton: ButtonStyle {
+struct USButton: ButtonStyle {
     enum Role { case primary, quiet }
     let role: Role
     var tint: Color = D.attention
@@ -87,7 +87,7 @@ struct FMButton: ButtonStyle {
 extension View {
     /// Honours the person's "reduce motion" setting without every caller
     /// having to remember to.
-    func fmAnimation<V: Equatable>(_ value: V) -> some View {
+    func usAnimation<V: Equatable>(_ value: V) -> some View {
         self.animation(
             NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
                 ? nil : .spring(response: 0.45, dampingFraction: 0.82),

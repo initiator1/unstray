@@ -40,7 +40,7 @@ enum WindowRescue {
         // because Swift refuses to import pre-10.9 symbols. Restores every
         // window, and works from a background app where the modern call
         // silently does nothing. See LegacyActivation.h for the full reasoning.
-        if fm_bring_app_to_front(pid) { return true }
+        if us_bring_app_to_front(pid) { return true }
 
         // Fallback: the modern call. Often silently fails from here, but costs
         // nothing to try and does work in some situations.
@@ -154,7 +154,7 @@ enum WindowRescue {
         //
         // NOT whatever is frontmost right now. By the time the key press
         // arrives, macOS has often made *us* frontmost, so asking for the
-        // frontmost app rescues foremac itself and nothing happens. And the app
+        // frontmost app rescues unstray itself and nothing happens. And the app
         // they are reaching for frequently has no visible window at all — which
         // is the whole reason they pressed the key — so it may not be frontmost
         // either.

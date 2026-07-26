@@ -1,4 +1,4 @@
-# PLAN.md — foremac architecture
+# PLAN.md — unstray architecture
 
 ## Shape
 
@@ -97,7 +97,7 @@ Stray shapes drift outside the bounding box when things are stranded.
 
 ## Log
 
-`~/.foremac/events.jsonl`, one JSON object per line: `launched`, `found`,
+`~/.unstray/events.jsonl`, one JSON object per line: `launched`, `found`,
 `repaired`, `rescued`, `hotkey`, `os_updated`, `permission_requested`,
 `permission_granted`. Local only; never transmitted.
 

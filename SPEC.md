@@ -1,4 +1,4 @@
-# SPEC.md — foremac
+# SPEC.md — unstray
 
 ## What it is
 
@@ -84,7 +84,7 @@ is the single most useful sentence on the screen.
 **A key press, not a watcher.** The original idea was to detect repeated Dock
 clicks. macOS provides no way to tell a Dock click from Cmd-Tab or Spotlight,
 and the event-tap workaround has a documented Tahoe code-signing race that
-silently disables it. More importantly, pressing a key makes foremac frontmost —
+silently disables it. More importantly, pressing a key makes unstray frontmost —
 which is exactly the state macOS requires before one app may bring another
 forward. The hotkey works *because* of how the OS behaves, not despite it.
 

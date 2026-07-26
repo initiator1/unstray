@@ -1,24 +1,24 @@
 #!/bin/bash
-# Builds foremac.app. No Xcode project — swiftc straight to a bundle, which is
+# Builds unstray.app. No Xcode project — swiftc straight to a bundle, which is
 # enough for a menu-bar app and keeps the repo readable.
 set -e
-APP="build/foremac.app"
+APP="build/unstray.app"
 rm -rf build && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>foremac</string>
-  <key>CFBundleDisplayName</key><string>foremac</string>
-  <key>CFBundleIdentifier</key><string>com.db1.foremac</string>
+  <key>CFBundleName</key><string>unstray</string>
+  <key>CFBundleDisplayName</key><string>unstray</string>
+  <key>CFBundleIdentifier</key><string>llc.initiator.unstray</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>CFBundleShortVersionString</key><string>0.1</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleExecutable</key><string>foremac</string>
+  <key>CFBundleExecutable</key><string>unstray</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
-  <key>CFBundleIconFile</key><string>foremac</string>
+  <key>CFBundleIconFile</key><string>unstray</string>
   <key>NSHumanReadableCopyright</key><string>Personal utility</string>
 </dict></plist>
 PLIST
@@ -26,27 +26,27 @@ PLIST
 echo "#import \"LegacyActivation.h\"" > build/bridge.h
 
 swiftc -O \
-  -o "$APP/Contents/MacOS/foremac" \
+  -o "$APP/Contents/MacOS/unstray" \
   -import-objc-header build/bridge.h \
-  -I foremac/Core \
+  -I unstray/Core \
   -framework Cocoa -framework SwiftUI -framework Carbon -framework ApplicationServices \
-  foremac/Core/LegacyActivation.c \
-  foremac/Core/Finding.swift \
-  foremac/Core/SettingsCheck.swift \
-  foremac/Core/WindowScan.swift \
-  foremac/Core/WindowRescue.swift \
-  foremac/Core/RepairLog.swift \
-  foremac/Core/Lifecycle.swift \
-  foremac/Core/ActivityWatch.swift \
-  foremac/UI/Design.swift \
-  foremac/UI/ScreenDiagram.swift \
-  foremac/UI/PermissionPanel.swift \
-  foremac/UI/VerdictView.swift \
-  foremac/App.swift
+  unstray/Core/LegacyActivation.c \
+  unstray/Core/Finding.swift \
+  unstray/Core/SettingsCheck.swift \
+  unstray/Core/WindowScan.swift \
+  unstray/Core/WindowRescue.swift \
+  unstray/Core/RepairLog.swift \
+  unstray/Core/Lifecycle.swift \
+  unstray/Core/ActivityWatch.swift \
+  unstray/UI/Design.swift \
+  unstray/UI/ScreenDiagram.swift \
+  unstray/UI/PermissionPanel.swift \
+  unstray/UI/VerdictView.swift \
+  unstray/App.swift
 
 # App icon (generated with gpt-image-2 via Codex's native image_gen).
-if [ -f assets/foremac.icns ]; then
-  cp assets/foremac.icns "$APP/Contents/Resources/foremac.icns"
+if [ -f assets/unstray.icns ]; then
+  cp assets/unstray.icns "$APP/Contents/Resources/unstray.icns"
 fi
 
 # Bundle Outfit so the app looks right on a Mac that does not have it installed.
@@ -62,8 +62,8 @@ fi
 # silently stops being able to move anything — the precise failure mode this
 # app exists to fix. Signing with Developer ID keeps one identity forever, so
 # the permission is granted once and stays granted.
-# Auto-detect the first Developer ID on this machine; override with FOREMAC_SIGN_ID.
-SIGN_ID="${FOREMAC_SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null \
+# Auto-detect the first Developer ID on this machine; override with UNSTRAY_SIGN_ID.
+SIGN_ID="${UNSTRAY_SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null \
   | grep -o "Developer ID Application: .*" | head -1 | sed 's/"$//')}"
 if [ -n "$SIGN_ID" ] && security find-identity -v -p codesigning 2>/dev/null | grep -qF "$SIGN_ID"; then
   codesign --force --deep --options runtime --sign "$SIGN_ID" "$APP"
@@ -95,16 +95,16 @@ echo "built: $APP"
 # September 2026.
 #
 # One-time setup (needs an app-specific password from appleid.apple.com):
-#   xcrun notarytool store-credentials foremac \
+#   xcrun notarytool store-credentials unstray \
 #     --apple-id "you@example.com" --team-id TEAMID --password "app-specific-pw"
 #
 # Then:  ./build.sh --notarize
 # ---------------------------------------------------------------------------
 if [ "${1:-}" = "--notarize" ]; then
   echo "==> notarizing (this takes a few minutes)"
-  ZIP="build/foremac.zip"
+  ZIP="build/unstray.zip"
   ditto -c -k --keepParent "$APP" "$ZIP"
-  xcrun notarytool submit "$ZIP" --keychain-profile "foremac" --wait
+  xcrun notarytool submit "$ZIP" --keychain-profile "unstray" --wait
   xcrun stapler staple "$APP"
   xcrun stapler validate "$APP" && echo "==> notarized and stapled"
   rm -f "$ZIP"

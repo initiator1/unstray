@@ -6,7 +6,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
-bool fm_bring_app_to_front(pid_t pid) {
+bool us_bring_app_to_front(pid_t pid) {
     ProcessSerialNumber psn = {0, 0};
     if (GetProcessForPID(pid, &psn) != noErr) {
         return false;

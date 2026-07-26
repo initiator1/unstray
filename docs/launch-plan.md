@@ -1,6 +1,6 @@
 # Launch Plan
 
-What it takes to put `foremac` in front of the public, and why the strategy is
+What it takes to put `unstray` in front of the public, and why the strategy is
 what it is. Written 2026-07-26.
 
 ## The recommendation, in one line
@@ -43,7 +43,7 @@ A utility is not.
 ## Blockers — must be done before anyone else runs this
 
 - [ ] **Notarize.** `./build.sh --notarize`. Needs a one-time
-      `xcrun notarytool store-credentials foremac --apple-id ... --team-id ...`
+      `xcrun notarytool store-credentials unstray --apple-id ... --team-id ...`
       with an app-specific password from appleid.apple.com. Without this,
       macOS 26 hard-blocks the app; the right-click bypass was removed in
       Sequoia. Homebrew also
@@ -61,7 +61,7 @@ A utility is not.
 - [x] **Docs sanitised.** Internal references removed; the AI build contract is
       no longer tracked.
 - [x] **Uninstall instructions in the README.** The app takes Accessibility
-      permission, registers a login item, and writes `~/.foremac/`. Someone who
+      permission, registers a login item, and writes `~/.unstray/`. Someone who
       wants it gone must be told all three. This is a trust issue as much as a
       support one.
 

@@ -21,6 +21,6 @@
 /// pre-10.9 Carbon symbols at all, hence this shim.
 ///
 /// Returns true if the app was brought forward.
-bool fm_bring_app_to_front(pid_t pid);
+bool us_bring_app_to_front(pid_t pid);
 
 #endif /* LegacyActivation_h */

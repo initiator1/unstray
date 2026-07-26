@@ -17,7 +17,7 @@ import Carbon.HIToolbox
 ///   - when the Mac wakes up
 ///   - after a macOS update, which is what silently broke things last time
 @main
-struct ForemacApp: App {
+struct UnstrayApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     var body: some Scene { Settings { EmptyView() } }
 }
@@ -100,7 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let name = needsAttention ? "rectangle.on.rectangle.fill" : "rectangle.on.rectangle"
         let img = NSImage(systemSymbolName: name, accessibilityDescription:
-                            needsAttention ? "foremac — found something" : "foremac — all clear")
+                            needsAttention ? "unstray — found something" : "unstray — all clear")
         if needsAttention {
             // Amber, so it matches the panel it opens. Not a template image,
             // because the colour is the message.
@@ -111,8 +111,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             b.image = img
         }
         b.toolTip = needsAttention
-            ? "foremac found something — click to see"
-            : "foremac — everything is where it should be"
+            ? "unstray found something — click to see"
+            : "unstray — everything is where it should be"
     }
 
     private func buildPopover() {
