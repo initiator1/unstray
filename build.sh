@@ -48,5 +48,19 @@ if [ -f "$HOME/Library/Fonts/Outfit-VariableFont_wght.ttf" ]; then
   /usr/libexec/PlistBuddy -c "Add :ATSApplicationFontsPath string ." "$APP/Contents/Info.plist" 2>/dev/null || true
 fi
 
-codesign --force --deep --sign - "$APP" 2>/dev/null || true
+# Sign with a stable identity, not ad-hoc.
+#
+# An ad-hoc signature gives the app a NEW code identity on every rebuild, so
+# macOS quietly revokes the Accessibility permission each time and the app
+# silently stops being able to move anything — the precise failure mode this
+# app exists to fix. Signing with Developer ID keeps one identity forever, so
+# the permission is granted once and stays granted.
+SIGN_ID="${FOREMAC_SIGN_ID:-Developer ID Application: Douglas Baker (MDWFZC6396)}"
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "$SIGN_ID"; then
+  codesign --force --deep --options runtime --sign "$SIGN_ID" "$APP"
+  echo "signed with: $SIGN_ID"
+else
+  codesign --force --deep --sign - "$APP" 2>/dev/null || true
+  echo "WARNING: signed ad-hoc — Accessibility permission will be revoked on every rebuild"
+fi
 echo "built: $APP"

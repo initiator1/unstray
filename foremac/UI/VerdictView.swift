@@ -15,6 +15,7 @@ struct VerdictView: View {
     let onRecheck: () -> Void
     let onGrantPermission: () -> Void
     let onOpenPrivacySettings: () -> Void
+    let onDismiss: () -> Void
     let onQuit: () -> Void
 
     var body: some View {
@@ -32,7 +33,8 @@ struct VerdictView: View {
             case .allWell(let when):
                 AllWellPanel(lastChecked: when, onRecheck: onRecheck)
             case .somethingWrong(let primary, let also):
-                ProblemPanel(finding: primary, alsoFound: also, onRepair: onRepair)
+                ProblemPanel(finding: primary, alsoFound: also,
+                             onRepair: onRepair, onDismiss: onDismiss)
             }
 
             Divider().overlay(D.hairline)
@@ -138,6 +140,7 @@ private struct ProblemPanel: View {
     let finding: Finding
     let alsoFound: [Finding]
     let onRepair: (Finding) -> Void
+    let onDismiss: () -> Void
 
     @State private var appeared = false
 
@@ -190,18 +193,23 @@ private struct ProblemPanel: View {
                 }
             }
 
-            HStack(spacing: 13) {
+            HStack(spacing: 11) {
                 Button(finding.actionLabel) { onRepair(finding) }
                     .buttonStyle(FMButton(role: .primary, tint: D.attention))
 
-                if !alsoFound.isEmpty {
-                    Text(alsoSentence)
-                        .font(D.label(11))
-                        .foregroundStyle(D.inkFaint)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                // A panel that opened itself must have a visible way out, or it
+                // is a trap. Never rely on clicking elsewhere to dismiss it.
+                Button("Not now", action: onDismiss)
+                    .buttonStyle(FMButton(role: .quiet))
             }
             .padding(.top, 2)
+
+            if !alsoFound.isEmpty {
+                Text(alsoSentence)
+                    .font(D.label(11))
+                    .foregroundStyle(D.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.horizontal, D.pad)
         .padding(.top, 18)
