@@ -28,7 +28,9 @@ struct ScreenDiagram: View {
         GeometryReader { geo in
             let b = bounds
             // Leave room on the left for the stray shape to sit outside.
-            let inset: CGFloat = strayCount > 0 ? 34 : 8
+            // When something is stranded, hold the screens well clear of the
+            // left edge so the stray shapes read as genuinely *outside* them.
+            let inset: CGFloat = strayCount > 0 ? 62 : 8
             let scale = (b.width > 0 && b.height > 0)
                 ? min((geo.size.width - inset * 2) / b.width,
                       (geo.size.height - 16) / b.height)
@@ -71,8 +73,8 @@ struct ScreenDiagram: View {
                             )
                             .frame(width: 20, height: 14)
                             .offset(
-                                x: (drift ? 2 : 8) + CGFloat(i) * 5,
-                                y: oy + 10 + CGFloat(i) * 17
+                                x: (drift ? 0 : 6) + CGFloat(i) * 4,
+                                y: oy + 8 + CGFloat(i) * 19
                             )
                             .opacity(1.0 - Double(i) * 0.22)
                     }

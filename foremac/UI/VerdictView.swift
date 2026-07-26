@@ -10,13 +10,25 @@ import SwiftUI
 /// to press.
 struct VerdictView: View {
     let verdict: Verdict
+    let awaitingPermission: Bool
     let onRepair: (Finding) -> Void
     let onRecheck: () -> Void
+    let onGrantPermission: () -> Void
+    let onOpenPrivacySettings: () -> Void
     let onQuit: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             switch verdict {
+            case .needsPermission:
+                if awaitingPermission {
+                    PermissionPendingPanel(
+                        onRecheck: onRecheck,
+                        onOpenSettings: onOpenPrivacySettings
+                    )
+                } else {
+                    PermissionPanel(onGrant: onGrantPermission, onLater: onQuit)
+                }
             case .allWell(let when):
                 AllWellPanel(lastChecked: when, onRecheck: onRecheck)
             case .somethingWrong(let primary, let also):

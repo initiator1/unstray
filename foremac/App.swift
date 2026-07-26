@@ -100,6 +100,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     fileprivate func rescuePressed() {
+        // Never fail quietly. Silently doing nothing is the exact bug this app
+        // exists to fix, so if we cannot help we say so on screen.
+        guard WindowRescue.hasPermission else {
+            RepairLog.write(event: "hotkey", detail: ["blocked": "no permission"])
+            showPanel()
+            return
+        }
         // Whatever the person was trying to reach is the app that was in front
         // before we became frontmost.
         let didSomething = WindowRescue.gatherFrontmostApp()
@@ -139,11 +146,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// Keeps the current answer, and knows how to work it out again.
 final class VerdictModel: ObservableObject {
     @Published var verdict: Verdict = .allWell(lastCheckedDescription: "Checked just now")
-    private var lastCheck = Date()
+
+    /// True between asking for permission and being given it, so the panel can
+    /// say "your Mac is asking you now" instead of repeating the request.
+    @Published var awaitingPermission = false
+
+    private var permissionPoll: Timer?
 
     func recheck(reason: String? = nil) {
+        // Without permission we cannot move anything, so reporting problems we
+        // are unable to fix would be a UI that promises what it cannot deliver.
+        guard WindowRescue.hasPermission else {
+            verdict = .needsPermission
+            return
+        }
+        awaitingPermission = false
+        stopPolling()
+
         let findings = SettingsCheck.runAll() + [WindowScan.check()].compactMap { $0 }
-        lastCheck = Date()
 
         if findings.isEmpty {
             verdict = .allWell(lastCheckedDescription: "Checked just now")
@@ -160,6 +180,41 @@ final class VerdictModel: ObservableObject {
         RepairLog.repaired(f, success: ok)
         recheck()
     }
+
+    // MARK: - Permission
+
+    /// Lets macOS ask its own question, then watches for the answer.
+    ///
+    /// macOS never tells an app that it has been trusted, so the only way to
+    /// notice is to keep looking. This stops as soon as permission arrives.
+    func requestPermission() {
+        awaitingPermission = true
+        RepairLog.write(event: "permission_requested")
+        WindowRescue.requestPermission()
+        startPolling()
+    }
+
+    private func startPolling() {
+        stopPolling()
+        permissionPoll = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            if WindowRescue.hasPermission {
+                RepairLog.write(event: "permission_granted")
+                self.recheck(reason: "permission granted")
+            }
+        }
+    }
+
+    private func stopPolling() {
+        permissionPoll?.invalidate()
+        permissionPoll = nil
+    }
+
+    /// Opens the exact page in System Settings, so nobody has to hunt for it.
+    func openPrivacySettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        NSWorkspace.shared.open(url)
+    }
 }
 
 /// Bridges the model into the view.
@@ -170,8 +225,11 @@ private struct VerdictHost: View {
     var body: some View {
         VerdictView(
             verdict: model.verdict,
+            awaitingPermission: model.awaitingPermission,
             onRepair: { model.repair($0) },
             onRecheck: { model.recheck(reason: "asked") },
+            onGrantPermission: { model.requestPermission() },
+            onOpenPrivacySettings: { model.openPrivacySettings() },
             onQuit: onQuit
         )
     }
