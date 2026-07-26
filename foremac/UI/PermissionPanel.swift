@@ -115,6 +115,7 @@ private struct Promise: View {
 struct PermissionPendingPanel: View {
     let onRecheck: () -> Void
     let onOpenSettings: () -> Void
+    let onDismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -147,6 +148,8 @@ struct PermissionPendingPanel: View {
                 Button("Take me there", action: onOpenSettings)
                     .buttonStyle(FMButton(role: .primary, tint: D.attention))
                 Button("I have done it", action: onRecheck)
+                    .buttonStyle(FMButton(role: .quiet))
+                Button("Later", action: onDismiss)
                     .buttonStyle(FMButton(role: .quiet))
             }
             .padding(.top, 2)

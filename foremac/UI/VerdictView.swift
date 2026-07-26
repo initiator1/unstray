@@ -25,10 +25,11 @@ struct VerdictView: View {
                 if awaitingPermission {
                     PermissionPendingPanel(
                         onRecheck: onRecheck,
-                        onOpenSettings: onOpenPrivacySettings
+                        onOpenSettings: onOpenPrivacySettings,
+                        onDismiss: onDismiss
                     )
                 } else {
-                    PermissionPanel(onGrant: onGrantPermission, onLater: onQuit)
+                    PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
                 }
             case .allWell(let when):
                 AllWellPanel(lastChecked: when, onRecheck: onRecheck)
