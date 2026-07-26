@@ -132,6 +132,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = host
     }
 
+    /// Escape always closes the panel, in every state. A keyboard way out is
+    /// the backstop for any sticky panel — buttons can be missed, Escape cannot.
+    fileprivate func closePanel() {
+        guard popover.isShown else { return }
+        popover.behavior = .transient
+        popover.performClose(nil)
+    }
+
     @objc private func togglePopover() {
         guard let b = statusItem.button else { return }
         if popover.isShown {
