@@ -37,6 +37,7 @@ swiftc -O \
   foremac/Core/RepairLog.swift \
   foremac/UI/Design.swift \
   foremac/UI/ScreenDiagram.swift \
+  foremac/UI/PermissionPanel.swift \
   foremac/UI/VerdictView.swift \
   foremac/App.swift
 

@@ -51,6 +51,11 @@ struct Finding: Identifiable, Equatable {
 
 /// The single answer the app gives when it opens.
 enum Verdict: Equatable {
+    /// We have not been given permission to move things yet, so we cannot do
+    /// the job at all. This outranks everything else — there is no point
+    /// reporting problems we are unable to fix.
+    case needsPermission
+
     /// Nothing is wrong. This is what BOSS sees almost every time, so it gets
     /// the most design care, not the least.
     case allWell(lastCheckedDescription: String)
@@ -62,7 +67,7 @@ enum Verdict: Equatable {
 
     var findings: [Finding] {
         switch self {
-        case .allWell: return []
+        case .needsPermission, .allWell: return []
         case .somethingWrong(let p, let rest): return [p] + rest
         }
     }
