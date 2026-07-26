@@ -42,9 +42,22 @@ A utility is not.
 
 ## Blockers — must be done before anyone else runs this
 
-- [ ] **Notarize.** `./build.sh --notarize`. Needs a one-time
-      `xcrun notarytool store-credentials unstray --apple-id ... --team-id ...`
-      with an app-specific password from appleid.apple.com. Without this,
+- [ ] **Notarize.** Two steps, once each.
+
+      First get an app-specific password at appleid.apple.com (Sign-In and
+      Security -> App-Specific Passwords). Your regular Apple ID password will
+      not work. Then, once:
+
+      ```bash
+      xcrun notarytool store-credentials unstray \
+        --apple-id "you@example.com" \
+        --team-id MDWFZC6396 \
+        --password "abcd-efgh-ijkl-mnop"
+      ```
+
+      Note the `xcrun` prefix — `notarytool` is inside the Xcode toolchain and
+      is not on PATH by itself. After that, `./build.sh --notarize` reads the
+      keychain and needs no secrets. Without this,
       macOS 26 hard-blocks the app; the right-click bypass was removed in
       Sequoia. Homebrew also
       [removes non-notarized casks](https://workbrew.com/blog/homebrew-5-0-0)

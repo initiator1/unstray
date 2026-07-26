@@ -85,6 +85,27 @@ permission each time — which is the exact silent failure this app exists to fi
 UNSTRAY_SIGN_ID="Developer ID Application: Your Name (TEAMID)" ./build.sh
 ```
 
+### Notarizing
+
+Apple requires notarization for any app distributed outside the Mac App Store.
+Without it macOS refuses to open the app for anyone but you.
+
+You need an app-specific password from
+[appleid.apple.com](https://appleid.apple.com) (Sign-In and Security →
+App-Specific Passwords) — your normal Apple ID password will not work. Then,
+once per machine:
+
+```bash
+xcrun notarytool store-credentials unstray --apple-id "you@example.com" --team-id YOURTEAMID --password "abcd-efgh-ijkl-mnop"
+```
+
+`notarytool` lives inside the Xcode toolchain, so it needs the `xcrun` prefix.
+After that:
+
+```bash
+./build.sh --notarize
+```
+
 ## Using it
 
 | | |
