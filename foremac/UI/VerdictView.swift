@@ -32,7 +32,7 @@ struct VerdictView: View {
                     PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
                 }
             case .allWell(let when):
-                AllWellPanel(lastChecked: when, onRecheck: onRecheck)
+                AllWellPanel(lastChecked: when, onRecheck: onRecheck, onDismiss: onDismiss)
             case .somethingWrong(let primary, let also):
                 ProblemPanel(finding: primary, alsoFound: also,
                              onRepair: onRepair, onDismiss: onDismiss)
@@ -67,6 +67,7 @@ struct VerdictView: View {
 private struct AllWellPanel: View {
     let lastChecked: String
     let onRecheck: () -> Void
+    let onDismiss: () -> Void
 
     @State private var appeared = false
 
@@ -108,7 +109,14 @@ private struct AllWellPanel: View {
             .offset(y: appeared ? 0 : 6)
             .fmAnimation(appeared)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 11) {
+                // "Done" comes first and is the filled button, because when
+                // nothing is wrong the only thing left to do is close this.
+                // It must always be here: the rescue key can open this panel
+                // sticky, and a sticky panel whose only buttons are "Check
+                // again" and "Quit" is a trap — BOSS got stuck in exactly that.
+                Button("Done", action: onDismiss)
+                    .buttonStyle(FMButton(role: .primary, tint: D.calm))
                 Button("Check again", action: onRecheck)
                     .buttonStyle(FMButton(role: .quiet))
                 Text(lastChecked)
