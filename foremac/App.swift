@@ -42,6 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusIcon() }
 
+        // Keep note of which app the person is actually using, so the rescue
+        // key knows what to go and find.
+        ActivityWatch.shared.start()
+
         Lifecycle.enableLaunchAtLoginOnce()
 
         // A macOS update is exactly when settings drift, so look straight away

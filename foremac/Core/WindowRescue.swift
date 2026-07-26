@@ -148,10 +148,24 @@ enum WindowRescue {
     /// Unminimizes, unhides, and drags anything off the edge back into view.
     @discardableResult
     static func gatherFrontmostApp() -> Bool {
-        guard hasPermission,
-              let app = NSWorkspace.shared.frontmostApplication
-        else { return false }
-        return gather(pid: app.processIdentifier)
+        guard hasPermission else { return false }
+
+        // Which app did the person actually want?
+        //
+        // NOT whatever is frontmost right now. By the time the key press
+        // arrives, macOS has often made *us* frontmost, so asking for the
+        // frontmost app rescues foremac itself and nothing happens. And the app
+        // they are reaching for frequently has no visible window at all — which
+        // is the whole reason they pressed the key — so it may not be frontmost
+        // either.
+        //
+        // ActivityWatch remembers the last real app they switched to, ignoring
+        // ourselves. That is the app they are fighting with.
+        let target = ActivityWatch.shared.lastUsedApp
+            ?? NSWorkspace.shared.frontmostApplication?.processIdentifier
+
+        guard let pid = target, pid != getpid() else { return false }
+        return gather(pid: pid)
     }
 
     @discardableResult
