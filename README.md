@@ -125,6 +125,16 @@ Short version of the hard parts:
   menu-bar app. The one call that reliably works is a deprecated Carbon
   function Swift refuses to import, hence a small C shim.
 
+## Bugs and questions
+
+Open an issue: https://github.com/INITIATOR/foremac/issues
+
 ## Licence
 
-Personal project. Do what you like with it.
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 INITIATOR LLC.
+
+Built and maintained by [@initiator1](https://github.com/initiator1).
+
+This software is provided as is, without warranty of any kind. It changes
+macOS settings and moves application windows at your request; you are
+responsible for deciding whether to let it.
