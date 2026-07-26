@@ -91,3 +91,21 @@ extension View {
         )
     }
 }
+
+
+extension NSImage {
+    /// A coloured copy of a symbol image, for the menu-bar icon. Template
+    /// images cannot carry their own colour, and for the attention state the
+    /// colour *is* the message.
+    func tinted(with color: NSColor) -> NSImage {
+        let out = NSImage(size: size)
+        out.lockFocus()
+        color.set()
+        let rect = NSRect(origin: .zero, size: size)
+        draw(in: rect)
+        rect.fill(using: .sourceAtop)
+        out.unlockFocus()
+        out.isTemplate = false
+        return out
+    }
+}

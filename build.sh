@@ -18,6 +18,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleExecutable</key><string>foremac</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
+  <key>CFBundleIconFile</key><string>foremac</string>
   <key>NSHumanReadableCopyright</key><string>Personal utility</string>
 </dict></plist>
 PLIST
@@ -41,6 +42,11 @@ swiftc -O \
   foremac/UI/PermissionPanel.swift \
   foremac/UI/VerdictView.swift \
   foremac/App.swift
+
+# App icon (generated with gpt-image-2 via Codex's native image_gen).
+if [ -f assets/foremac.icns ]; then
+  cp assets/foremac.icns "$APP/Contents/Resources/foremac.icns"
+fi
 
 # Bundle Outfit so the app looks right on a Mac that does not have it installed.
 if [ -f "$HOME/Library/Fonts/Outfit-VariableFont_wght.ttf" ]; then

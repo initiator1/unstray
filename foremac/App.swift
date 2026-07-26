@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import Carbon.HIToolbox
 
 /// The app itself: a small picture in the bar at the top of the screen that
@@ -26,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private var hotKeyRef: EventHotKeyRef?
     private var model = VerdictModel()
+    private var verdictObserver: AnyCancellable?
 
     func applicationDidFinishLaunching(_ n: Notification) {
         NSApp.setActivationPolicy(.accessory)   // no Dock icon, no menu bar menus
@@ -34,6 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildPopover()
         registerHotKey()
         observeSystemEvents()
+
+        // Whenever the answer changes, the picture in the bar changes with it.
+        verdictObserver = model.$verdict
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusIcon() }
 
         Lifecycle.enableLaunchAtLoginOnce()
 
@@ -62,14 +69,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let b = statusItem.button {
-            b.image = NSImage(
-                systemSymbolName: "rectangle.on.rectangle",
-                accessibilityDescription: "foremac"
-            )
-            b.image?.isTemplate = true
             b.action = #selector(togglePopover)
             b.target = self
         }
+        updateStatusIcon()
+    }
+
+    /// The picture in the bar says what we know, without being opened.
+    ///
+    /// Quiet by default: a plain outline that reads as "nothing to do", drawn as
+    /// a template so it follows light and dark menu bars. When something needs
+    /// attention it fills in and takes on the same amber used inside the app, so
+    /// the two are recognisably one thing. It never flashes, never animates, and
+    /// never uses red — a menu bar that shouts is a menu bar people remove.
+    fileprivate func updateStatusIcon() {
+        guard let b = statusItem.button else { return }
+        let needsAttention: Bool
+        switch model.verdict {
+        case .allWell:                         needsAttention = false
+        case .needsPermission, .somethingWrong: needsAttention = true
+        }
+
+        let name = needsAttention ? "rectangle.on.rectangle.fill" : "rectangle.on.rectangle"
+        let img = NSImage(systemSymbolName: name, accessibilityDescription:
+                            needsAttention ? "foremac — found something" : "foremac — all clear")
+        if needsAttention {
+            // Amber, so it matches the panel it opens. Not a template image,
+            // because the colour is the message.
+            img?.isTemplate = false
+            b.image = img?.tinted(with: NSColor(red: 0.933, green: 0.702, blue: 0.400, alpha: 1))
+        } else {
+            img?.isTemplate = true
+            b.image = img
+        }
+        b.toolTip = needsAttention
+            ? "foremac found something — click to see"
+            : "foremac — everything is where it should be"
     }
 
     private func buildPopover() {
