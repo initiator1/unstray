@@ -156,7 +156,7 @@ private struct ProblemPanel: View {
                     Circle()
                         .fill(D.attention)
                         .frame(width: 5, height: 5)
-                    Text("Found something")
+                    Text(finding.blamesOSUpdate ? "Your Mac just updated" : "Found something")
                         .font(D.label(11))
                         .tracking(1.1)
                         .foregroundStyle(D.attention)
@@ -168,7 +168,7 @@ private struct ProblemPanel: View {
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(finding.explanation)
+                Text(explanationText)
                     .font(D.body(13.5))
                     .foregroundStyle(D.inkSoft)
                     .lineSpacing(3.5)
@@ -210,6 +210,15 @@ private struct ProblemPanel: View {
         .offset(y: appeared ? 0 : 6)
         .fmAnimation(appeared)
         .onAppear { appeared = true }
+    }
+
+    /// When an update caused this, that fact goes first — it is the answer to
+    /// "why is this happening today, when it was fine yesterday?"
+    private var explanationText: String {
+        guard finding.blamesOSUpdate else { return finding.explanation }
+        return "Your Mac installed an update, and the update changed one of "
+             + "its own settings without telling you.\n\n"
+             + finding.explanation
     }
 
     /// Mentions the rest without listing them — a promise, not a queue.
