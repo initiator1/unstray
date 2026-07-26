@@ -52,13 +52,14 @@ A utility is not.
 - [ ] **Test on a single-display Mac.** Most users have one screen. The screen
       picture, the "all 3 of your screens" sentence, and the stray-shape layout
       were all built and verified on a three-display machine.
-- [ ] **Decide the byline.** LICENSE currently says "foremac contributors".
-      Real name or a handle — this is the reputation play, so anonymity costs
-      most of the point.
-- [ ] **Sanitise the docs.** `docs/loop-goal.md` and `PLAN.md` still refer to
-      "BOSS" and an internal assistant. Either rewrite or leave them out of the
-      public repo.
-- [ ] **Uninstall instructions in the README.** The app takes Accessibility
+- [x] **Byline decided.** Copyright INITIATOR LLC (Delaware, good standing since
+      2020), maintained publicly by [@initiator1](https://github.com/initiator1).
+      The entity is a liability shield, not a privacy measure — it is public
+      record either way — and it gives future projects one brand to accumulate
+      under, which a personal name cannot be sold with.
+- [x] **Docs sanitised.** Internal references removed; the AI build contract is
+      no longer tracked.
+- [x] **Uninstall instructions in the README.** The app takes Accessibility
       permission, registers a login item, and writes `~/.foremac/`. Someone who
       wants it gone must be told all three. This is a trust issue as much as a
       support one.
@@ -70,11 +71,11 @@ A utility is not.
       currently none, guarding the app's actual reason for existing.
 - [ ] Surface repair failures. `repair()` returns a Bool that is logged but
       never shown; if a fix fails the same panel simply reappears.
-- [ ] Version number visible in the UI, and a `CHANGELOG.md`.
-- [ ] A bug-report path — a GitHub Issues link is enough.
-- [ ] A one-line privacy statement: no network calls, one local file, here is
+- [x] Version number visible in the UI, and a `CHANGELOG.md`.
+- [x] A bug-report path — a GitHub Issues link is enough.
+- [x] A privacy statement: no network calls, one local file, here is
       how to delete it. (Verified true: no networking code exists at all.)
-- [ ] README note that Bartender/Ice hide menu-bar icons — this will otherwise
+- [x] README note that Bartender/Ice hide menu-bar icons — this will otherwise
       be the single most common "it didn't install" report.
 - [ ] A screenshot or short GIF. Strangers decide in seconds.
 
