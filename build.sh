@@ -73,3 +73,28 @@ else
   echo "WARNING: signed ad-hoc — Accessibility permission will be revoked on every rebuild"
 fi
 echo "built: $APP"
+
+# ---------------------------------------------------------------------------
+# Notarization (optional, required for public distribution)
+#
+# Apple requires notarization for any app distributed outside the Mac App Store.
+# Without it, macOS 26 shows a hard block and the only way in is System Settings
+# > Privacy & Security > "Open Anyway" — the right-click bypass was removed in
+# Sequoia. Homebrew also removes non-notarized casks from the official tap in
+# September 2026.
+#
+# One-time setup (needs an app-specific password from appleid.apple.com):
+#   xcrun notarytool store-credentials foremac \
+#     --apple-id "you@example.com" --team-id TEAMID --password "app-specific-pw"
+#
+# Then:  ./build.sh --notarize
+# ---------------------------------------------------------------------------
+if [ "${1:-}" = "--notarize" ]; then
+  echo "==> notarizing (this takes a few minutes)"
+  ZIP="build/foremac.zip"
+  ditto -c -k --keepParent "$APP" "$ZIP"
+  xcrun notarytool submit "$ZIP" --keychain-profile "foremac" --wait
+  xcrun stapler staple "$APP"
+  xcrun stapler validate "$APP" && echo "==> notarized and stapled"
+  rm -f "$ZIP"
+fi
