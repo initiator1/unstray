@@ -46,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // say so. This is the one time the app is allowed to interrupt.
         if model.blameUpdate, case .somethingWrong = model.verdict {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-                self?.showPanel()
+                self?.showPanel(sticky: true)
             }
         }
 
@@ -74,10 +74,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildPopover() {
         popover = NSPopover()
+        // Closes when you click elsewhere — right for a panel you opened on
+        // purpose. When the app opens itself to tell you something, this is
+        // switched to .applicationDefined so the message cannot vanish before
+        // it has been read. See showPanel(sticky:).
         popover.behavior = .transient
         popover.animates = true
         let host = NSHostingController(
-            rootView: VerdictHost(model: model, onQuit: { NSApp.terminate(nil) })
+            rootView: VerdictHost(
+                model: model,
+                onDismiss: { [weak self] in
+                    self?.popover.behavior = .transient
+                    self?.popover.performClose(nil)
+                },
+                onQuit: { NSApp.terminate(nil) }
+            )
         )
         popover.contentViewController = host
     }
@@ -85,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func togglePopover() {
         guard let b = statusItem.button else { return }
         if popover.isShown {
+            popover.behavior = .transient
             popover.performClose(nil)
         } else {
             model.recheck()
@@ -122,20 +134,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // exists to fix, so if we cannot help we say so on screen.
         guard WindowRescue.hasPermission else {
             RepairLog.write(event: "hotkey", detail: ["blocked": "no permission"])
-            showPanel()
+            showPanel(sticky: true)
             return
         }
         // Whatever the person was trying to reach is the app that was in front
         // before we became frontmost.
         let didSomething = WindowRescue.gatherFrontmostApp()
         RepairLog.write(event: "hotkey", detail: ["movedSomething": didSomething])
-        if !didSomething { showPanel() }
+        if !didSomething { showPanel(sticky: true) }
     }
 
-    private func showPanel() {
+    /// Opens the panel.
+    ///
+    /// `sticky` is for the times the app speaks first — after a macOS update,
+    /// or when the rescue key could not help. Those messages must survive the
+    /// person clicking on whatever they were reaching for; a notice that
+    /// vanishes before it is read is the same silent failure this app exists
+    /// to correct. Sticky panels close only via their own buttons.
+    private func showPanel(sticky: Bool = false) {
         guard let b = statusItem.button, !popover.isShown else { return }
         model.recheck()
+        popover.behavior = sticky ? .applicationDefined : .transient
         popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
+        if sticky {
+            // Bring ourselves forward so the panel is not buried behind the
+            // window the person clicks next.
+            NSApp.activate(ignoringOtherApps: true)
+            popover.contentViewController?.view.window?.makeKey()
+        }
     }
 
     // MARK: - When to look again
@@ -262,6 +288,7 @@ final class VerdictModel: ObservableObject {
 /// Bridges the model into the view.
 private struct VerdictHost: View {
     @ObservedObject var model: VerdictModel
+    let onDismiss: () -> Void
     let onQuit: () -> Void
 
     var body: some View {
@@ -272,6 +299,7 @@ private struct VerdictHost: View {
             onRecheck: { model.recheck(reason: "asked") },
             onGrantPermission: { model.requestPermission() },
             onOpenPrivacySettings: { model.openPrivacySettings() },
+            onDismiss: onDismiss,
             onQuit: onQuit
         )
     }
