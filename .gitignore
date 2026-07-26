@@ -9,3 +9,7 @@ xcuserdata/
 credentials.*
 secrets.*
 *.secret
+
+# Internal tooling
+.claude/
+build/
