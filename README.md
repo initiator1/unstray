@@ -102,6 +102,43 @@ screen, and after a macOS update.
 - It does not run in the background watching you. It looks when something
   happens, then goes quiet.
 
+## Uninstalling
+
+foremac leaves three things behind. Removing all three takes a minute:
+
+1. **Quit it** — click the icon in the top bar, then Quit.
+2. **Delete the app** — drag `/Applications/foremac.app` to the Trash. That also
+   removes it from your login items.
+3. **Remove its notes** — `rm -rf ~/.foremac` in Terminal, or delete the
+   `.foremac` folder in your home folder. It only ever contains a small log of
+   what foremac found and fixed.
+4. **Take back the permission** — System Settings → Privacy & Security →
+   Accessibility → switch foremac off, or select it and press the minus button.
+
+## Privacy
+
+foremac makes no network connections of any kind. There is no analytics, no
+telemetry, no crash reporting, no update check — the app contains no networking
+code at all.
+
+It writes one file, `~/.foremac/events.jsonl`, readable only by you. It records
+what kind of problem was found and whether a fix worked. It does **not** record
+which apps you use, window positions, window titles, or anything on your screen.
+
+## Troubleshooting
+
+**I can't see the icon in my menu bar.** If you use Bartender, Ice, or a similar
+tool, it may be hiding it — check that app's settings. Menu bars that are very
+full can also push icons off the edge on smaller screens.
+
+**⌥⌘R does nothing.** Another app may already be using that combination.
+foremac tries ⌥⌘R first, then ⌥⇧⌘R, then ⌥⇧⌘W. Check `~/.foremac/events.jsonl`
+for a `hotkey_fallback` line to see which one it got.
+
+**It says it needs to log me out.** Only for the setting that makes your screens
+independent again — macOS itself requires the logout. Save your work first;
+foremac will not log you out without you pressing the button.
+
 ## Requirements
 
 macOS 14 or later (developed and tested on macOS 26.5 "Tahoe"). Not sandboxed,
