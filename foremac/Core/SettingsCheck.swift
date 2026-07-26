@@ -57,12 +57,11 @@ enum SettingsCheck {
             explanation: """
             That is not your fault, and nothing is broken.
 
-            A setting in your Mac got turned off. While it is off, your Mac treats \
-            all of your screens as one single screen. So when you make a video fill \
-            the whole screen, your Mac thinks "the whole screen" means every screen \
-            you own — and it empties the others to get out of the way.
+            A setting got turned off, and while it is off your Mac treats all of \
+            your screens as one big screen. So when you fill "the whole screen", \
+            it empties the others to make room.
 
-            Turning that setting back on lets each screen keep its own things.
+            I can turn that setting back on. Then each screen keeps its own things.
             """,
             actionLabel: "Fix this for me",
             costWarning: "Your Mac has to log you out and back in before this works. Save anything you are in the middle of first.",
