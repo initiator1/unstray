@@ -6,7 +6,7 @@ a computer can understand.
 
 For product context see [SPEC.md](SPEC.md). For architecture see [PLAN.md](PLAN.md).
 The voice rules are binding: [docs/plain-language.md](docs/plain-language.md).
-The build contract is [docs/loop-goal.md](docs/loop-goal.md).
+Distribution strategy and the pre-launch checklist: [docs/launch-plan.md](docs/launch-plan.md).
 
 ## Run and build
 
@@ -32,7 +32,7 @@ foremac/Core/
   WindowScan.swift       Finds windows no screen can reach.
   WindowRescue.swift     Moves them back. AX + the Carbon shim.
   LegacyActivation.{h,c} C shim for SetFrontProcessWithOptions.
-  RepairLog.swift        JSONL to ~/.foremac/events.jsonl (Aria-readable).
+  RepairLog.swift        JSONL to ~/.foremac/events.jsonl (local only).
   Lifecycle.swift        Launch at login; macOS-update detection.
 foremac/UI/
   Design.swift           Palette, type, the one button style.

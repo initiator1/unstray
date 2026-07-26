@@ -99,7 +99,7 @@ Stray shapes drift outside the bounding box when things are stranded.
 
 `~/.foremac/events.jsonl`, one JSON object per line: `launched`, `found`,
 `repaired`, `rescued`, `hotkey`, `os_updated`, `permission_requested`,
-`permission_granted`. Readable by Aria as context on BOSS's day.
+`permission_granted`. Local only; never transmitted.
 
 ## Known gaps
 
