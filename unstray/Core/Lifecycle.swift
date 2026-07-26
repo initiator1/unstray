@@ -33,7 +33,7 @@ enum Lifecycle {
     /// that decision sticks — an app that keeps re-enabling itself is spyware
     /// behaviour, however well meant.
     static func enableLaunchAtLoginOnce() {
-        let key = "fm.didOfferLaunchAtLogin"
+        let key = "us.didOfferLaunchAtLogin"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
         UserDefaults.standard.set(true, forKey: key)
         setLaunchAtLogin(true)
@@ -48,7 +48,7 @@ enum Lifecycle {
     // said a word. So: remember the version we last saw, and when it changes,
     // look again — that is exactly the moment settings drift.
 
-    private static let versionKey = "fm.lastSeenOSVersion"
+    private static let versionKey = "us.lastSeenOSVersion"
 
     static var currentOSVersion: String {
         let v = ProcessInfo.processInfo.operatingSystemVersion

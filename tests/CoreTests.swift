@@ -189,7 +189,7 @@ func testDiagram() {
 
 // MARK: -
 
-print("foremac core tests")
+print("unstray core tests")
 testReachability()
 testWindowFiltering()
 testSettings()

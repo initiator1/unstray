@@ -69,9 +69,9 @@ struct PermissionPanel: View {
 
             HStack(spacing: 11) {
                 Button("Give permission", action: onGrant)
-                    .buttonStyle(FMButton(role: .primary, tint: D.attention))
+                    .buttonStyle(USButton(role: .primary, tint: D.attention))
                 Button("Not yet", action: onLater)
-                    .buttonStyle(FMButton(role: .quiet))
+                    .buttonStyle(USButton(role: .quiet))
             }
             .padding(.top, 2)
         }
@@ -80,7 +80,7 @@ struct PermissionPanel: View {
         .padding(.bottom, 16)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 6)
-        .fmAnimation(appeared)
+        .usAnimation(appeared)
         .onAppear { appeared = true }
     }
 }
@@ -140,8 +140,8 @@ struct PermissionPendingPanel: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("""
-            Look for a box that mentions foremac and press Open System Settings, \
-            then switch foremac on in the list.
+            Look for a box that mentions unstray and press Open System Settings, \
+            then switch unstray on in the list.
 
             If the box has already gone, I can take you straight there.
             """)
@@ -152,11 +152,11 @@ struct PermissionPendingPanel: View {
 
             HStack(spacing: 11) {
                 Button("Take me there", action: onOpenSettings)
-                    .buttonStyle(FMButton(role: .primary, tint: D.attention))
+                    .buttonStyle(USButton(role: .primary, tint: D.attention))
                 Button("I have done it", action: onRecheck)
-                    .buttonStyle(FMButton(role: .quiet))
+                    .buttonStyle(USButton(role: .quiet))
                 Button("Later", action: onDismiss)
-                    .buttonStyle(FMButton(role: .quiet))
+                    .buttonStyle(USButton(role: .quiet))
             }
             .padding(.top, 2)
         }

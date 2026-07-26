@@ -14,7 +14,7 @@ enum RepairLog {
     static let url: URL = {
         let dir = FileManager.default
             .homeDirectoryForCurrentUser
-            .appendingPathComponent(".foremac", isDirectory: true)
+            .appendingPathComponent(".unstray", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("events.jsonl")
     }()

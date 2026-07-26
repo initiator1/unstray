@@ -1,4 +1,4 @@
-# foremac
+# unstray
 
 A small Mac app that notices when your Mac has hidden something from you, brings
 it back, and tells you what happened in plain words.
@@ -34,7 +34,7 @@ this was built for, an update turned off "Displays have separate Spaces" — whi
 blacked out two 4K monitors and stranded five windows at coordinates no screen
 could reach. macOS never mentioned it.
 
-## What foremac does
+## What unstray does
 
 **Answers one question.** Open it and it tells you whether anything is wrong
 right now. If nothing is, it says so in one sentence. If something is, it shows
@@ -60,14 +60,14 @@ who will assume they broke something. They didn't, and the app says so.
 ## Install
 
 ```bash
-git clone <this repo> && cd foremac
+git clone <this repo> && cd unstray
 ./build.sh
-cp -R build/foremac.app /Applications/
-open /Applications/foremac.app
+cp -R build/unstray.app /Applications/
+open /Applications/unstray.app
 ```
 
 Then grant Accessibility permission when asked (System Settings → Privacy &
-Security → Accessibility). Without it, foremac can still find and fix settings
+Security → Accessibility). Without it, unstray can still find and fix settings
 problems — it just cannot move windows.
 
 It starts with your Mac from then on. If you turn that off, it stays off.
@@ -80,7 +80,7 @@ the app's identity on every rebuild, so macOS silently revokes the Accessibility
 permission each time — which is the exact silent failure this app exists to fix.
 
 ```bash
-FOREMAC_SIGN_ID="Developer ID Application: Your Name (TEAMID)" ./build.sh
+UNSTRAY_SIGN_ID="Developer ID Application: Your Name (TEAMID)" ./build.sh
 ```
 
 ## Using it
@@ -104,24 +104,24 @@ screen, and after a macOS update.
 
 ## Uninstalling
 
-foremac leaves three things behind. Removing all three takes a minute:
+unstray leaves three things behind. Removing all three takes a minute:
 
 1. **Quit it** — click the icon in the top bar, then Quit.
-2. **Delete the app** — drag `/Applications/foremac.app` to the Trash. That also
+2. **Delete the app** — drag `/Applications/unstray.app` to the Trash. That also
    removes it from your login items.
-3. **Remove its notes** — `rm -rf ~/.foremac` in Terminal, or delete the
-   `.foremac` folder in your home folder. It only ever contains a small log of
-   what foremac found and fixed.
+3. **Remove its notes** — `rm -rf ~/.unstray` in Terminal, or delete the
+   `.unstray` folder in your home folder. It only ever contains a small log of
+   what unstray found and fixed.
 4. **Take back the permission** — System Settings → Privacy & Security →
-   Accessibility → switch foremac off, or select it and press the minus button.
+   Accessibility → switch unstray off, or select it and press the minus button.
 
 ## Privacy
 
-foremac makes no network connections of any kind. There is no analytics, no
+unstray makes no network connections of any kind. There is no analytics, no
 telemetry, no crash reporting, no update check — the app contains no networking
 code at all.
 
-It writes one file, `~/.foremac/events.jsonl`, readable only by you. It records
+It writes one file, `~/.unstray/events.jsonl`, readable only by you. It records
 what kind of problem was found and whether a fix worked. It does **not** record
 which apps you use, window positions, window titles, or anything on your screen.
 
@@ -132,12 +132,12 @@ tool, it may be hiding it — check that app's settings. Menu bars that are very
 full can also push icons off the edge on smaller screens.
 
 **⌥⌘R does nothing.** Another app may already be using that combination.
-foremac tries ⌥⌘R first, then ⌥⇧⌘R, then ⌥⇧⌘W. Check `~/.foremac/events.jsonl`
+unstray tries ⌥⌘R first, then ⌥⇧⌘R, then ⌥⇧⌘W. Check `~/.unstray/events.jsonl`
 for a `hotkey_fallback` line to see which one it got.
 
 **It says it needs to log me out.** Only for the setting that makes your screens
 independent again — macOS itself requires the logout. Save your work first;
-foremac will not log you out without you pressing the button.
+unstray will not log you out without you pressing the button.
 
 ## Requirements
 
@@ -155,7 +155,7 @@ Short version of the hard parts:
 
 - Accessibility can move windows but only sees the desktop you are looking at.
   `CGWindowList` sees every desktop but cannot move anything. You need both.
-- There is no public API to move a window to another desktop. So foremac moves
+- There is no public API to move a window to another desktop. So unstray moves
   *you* to the window instead — no SIP disabling, no private APIs, nothing that
   breaks on the next macOS.
 - `NSRunningApplication.activate` silently does nothing when called from a
@@ -164,7 +164,7 @@ Short version of the hard parts:
 
 ## Bugs and questions
 
-Open an issue: https://github.com/INITIATOR/foremac/issues
+Open an issue: https://github.com/INITIATOR/unstray/issues
 
 ## Licence
 

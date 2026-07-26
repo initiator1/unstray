@@ -1,4 +1,4 @@
-# CLAUDE.md — foremac
+# CLAUDE.md — unstray
 
 A macOS menu-bar app that notices when the Mac has hidden something from you,
 brings it back, and explains what happened in words a person who has barely used
@@ -11,8 +11,8 @@ Distribution strategy and the pre-launch checklist: [docs/launch-plan.md](docs/l
 ## Run and build
 
 ```bash
-./build.sh                  # -> build/foremac.app
-open build/foremac.app
+./build.sh                  # -> build/unstray.app
+open build/unstray.app
 ```
 
 ```bash
@@ -30,22 +30,22 @@ gated.
 ## Architecture
 
 ```
-foremac/Core/
+unstray/Core/
   Finding.swift          Finding + Verdict. Every user-facing string lives here.
   SettingsCheck.swift    The three load-bearing macOS settings.
   WindowScan.swift       Finds windows no screen can reach.
   WindowRescue.swift     Moves them back. AX + the Carbon shim.
   LegacyActivation.{h,c} C shim for SetFrontProcessWithOptions.
-  RepairLog.swift        JSONL to ~/.foremac/events.jsonl (local only).
+  RepairLog.swift        JSONL to ~/.unstray/events.jsonl (local only).
   Lifecycle.swift        Launch at login; macOS-update detection.
-foremac/UI/
+unstray/UI/
   Design.swift           Palette, type, the one button style.
   ScreenDiagram.swift    The signature element: your real screens, to scale.
   VerdictView.swift      Healthy and problem panels.
   PermissionPanel.swift  Asking for Accessibility without frightening anyone.
-foremac/App.swift        Menu bar, hotkey, VerdictModel.
+unstray/App.swift        Menu bar, hotkey, VerdictModel.
 assets/                  App icon (gpt-image-2 via Codex's native image_gen).
-                         foremac-1024.png is the master; .icns is built from it.
+                         unstray-1024.png is the master; .icns is built from it.
 ```
 
 ## Icon
@@ -55,7 +55,7 @@ ChatGPT OAuth, no API key). Never the imagegen skill's `image_gen.py` CLI, and
 never hand-rolled SVG/CSS art. After generating, rebuild:
 
 ```bash
-iconutil -c icns assets/foremac.iconset -o assets/foremac.icns && ./build.sh
+iconutil -c icns assets/unstray.iconset -o assets/unstray.icns && ./build.sh
 ```
 
 Direction: dark-matte squircle, deep blue-slate, warm amber thin-line screens

@@ -1,6 +1,6 @@
 # Plain Language Rules
 
-Every word `foremac` shows a person must pass these rules. The reader may be
+Every word `unstray` shows a person must pass these rules. The reader may be
 using a computer for close to the first time. They are not stupid — they simply
 have not been taught the words yet, and there is no reason they should have been.
 

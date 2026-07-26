@@ -43,7 +43,7 @@ struct VerdictView: View {
             HStack(spacing: 14) {
                 // Version is here so "which version are you on?" is answerable
                 // without digging through Finder.
-                Text("foremac \(Bundle.main.shortVersion)")
+                Text("unstray \(Bundle.main.shortVersion)")
                     .font(D.label(11))
                     .foregroundStyle(D.inkFaint)
                 Spacer()
@@ -79,7 +79,7 @@ private struct AllWellPanel: View {
                 .padding(.top, 2)
                 .opacity(appeared ? 1 : 0)
                 .scaleEffect(appeared ? 1 : 0.97)
-                .fmAnimation(appeared)
+                .usAnimation(appeared)
 
             VStack(alignment: .leading, spacing: 8) {
                 // A quiet mark that everything is accounted for. The only place
@@ -110,7 +110,7 @@ private struct AllWellPanel: View {
             }
             .opacity(appeared ? 1 : 0)
             .offset(y: appeared ? 0 : 6)
-            .fmAnimation(appeared)
+            .usAnimation(appeared)
 
             HStack(spacing: 11) {
                 // "Done" comes first and is the filled button, because when
@@ -119,9 +119,9 @@ private struct AllWellPanel: View {
                 // sticky, and a sticky panel whose only buttons are "Check
                 // again" and "Quit" is a trap — real users got stuck in exactly that.
                 Button("Done", action: onDismiss)
-                    .buttonStyle(FMButton(role: .primary, tint: D.calm))
+                    .buttonStyle(USButton(role: .primary, tint: D.calm))
                 Button("Check again", action: onRecheck)
-                    .buttonStyle(FMButton(role: .quiet))
+                    .buttonStyle(USButton(role: .quiet))
                 Text(lastChecked)
                     .font(D.label(11))
                     .foregroundStyle(D.inkFaint)
@@ -208,12 +208,12 @@ private struct ProblemPanel: View {
 
             HStack(spacing: 11) {
                 Button(finding.actionLabel) { onRepair(finding) }
-                    .buttonStyle(FMButton(role: .primary, tint: D.attention))
+                    .buttonStyle(USButton(role: .primary, tint: D.attention))
 
                 // A panel that opened itself must have a visible way out, or it
                 // is a trap. Never rely on clicking elsewhere to dismiss it.
                 Button("Not now", action: onDismiss)
-                    .buttonStyle(FMButton(role: .quiet))
+                    .buttonStyle(USButton(role: .quiet))
             }
             .padding(.top, 2)
 
@@ -229,7 +229,7 @@ private struct ProblemPanel: View {
         .padding(.bottom, 16)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 6)
-        .fmAnimation(appeared)
+        .usAnimation(appeared)
         .onAppear { appeared = true }
     }
 
