@@ -41,7 +41,9 @@ struct VerdictView: View {
             Divider().overlay(D.hairline)
 
             HStack(spacing: 14) {
-                Text("foremac")
+                // Version is here so "which version are you on?" is answerable
+                // without digging through Finder.
+                Text("foremac \(Bundle.main.shortVersion)")
                     .font(D.label(11))
                     .foregroundStyle(D.inkFaint)
                 Spacer()

@@ -113,3 +113,11 @@ extension NSImage {
         return out
     }
 }
+
+
+extension Bundle {
+    /// The version people see, for bug reports.
+    var shortVersion: String {
+        (infoDictionary?["CFBundleShortVersionString"] as? String) ?? "?"
+    }
+}
