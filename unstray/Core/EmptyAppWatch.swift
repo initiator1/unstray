@@ -23,15 +23,11 @@ import ApplicationServices
 /// speaks if the repair does not work.
 final class EmptyAppWatch {
 
-    /// Called when an app came forward and still has nothing to show, after we
-    /// have already tried and failed to fix it.
-    var onUnfixable: ((String) -> Void)?
+    /// Called when an app came forward and we could not make it usable.
+    /// Carries the app's name and what is wrong, so the panel can explain it.
+    var onUnfixable: ((String, Usability.Problem) -> Void)?
 
     private var pending: DispatchWorkItem?
-
-    /// Anything shorter than this is a toolbar, a menu-bar strip, or a shadow —
-    /// not a window you were trying to look at. CotEditor's leftovers were 26pt.
-    private let smallestRealWindow: CGFloat = 120
 
     /// Long enough for an app that is genuinely opening a window to finish, short
     /// enough that a person has not yet decided the computer is broken.
@@ -69,65 +65,79 @@ final class EmptyAppWatch {
     /// True when this app has nothing on screen worth looking at.
     private func showsNothing(pid: pid_t) -> Bool {
         let screens = NSScreen.screens.map { $0.frame }
-        guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID)
-                  as? [[String: Any]]
-        else { return false }
-
-        for w in list {
-            guard let owner = w[kCGWindowOwnerPID as String] as? pid_t, owner == pid,
-                  let layer = w[kCGWindowLayer as String] as? Int, layer == 0,
-                  let b = w[kCGWindowBounds as String] as? [String: CGFloat],
-                  let h = b["Height"], let width = b["Width"],
-                  let x = b["X"], let y = b["Y"]
-            else { continue }
-
-            // Toolbars and menu-bar strips do not count as something to look at.
-            guard h >= smallestRealWindow, width >= 200 else { continue }
-
-            let r = CGRect(x: x, y: y, width: width, height: h)
-            if screens.contains(where: { $0.intersects(r) }) {
-                return false        // found something real and reachable
-            }
-        }
-        return true
+        let windows = Usability.realWindows(pid: pid)
+        return !windows.contains { w in screens.contains { $0.intersects(w) } }
     }
 
     private func checkAndRepair(_ app: NSRunningApplication) {
-        // Only worry about the app that is actually in front right now. If the
-        // person has moved on, the moment has passed.
+        // Only worry about the app that is actually in front. If the person has
+        // moved on, the moment has passed.
         guard NSWorkspace.shared.frontmostApplication?.processIdentifier
                 == app.processIdentifier,
-              showsNothing(pid: app.processIdentifier)
+              let problem = Usability.problem(for: app)
         else { return }
 
         let name = app.localizedName ?? "That app"
-        RepairLog.write(event: "app_showed_nothing", detail: ["fixing": true])
+        RepairLog.write(event: "app_unusable", detail: ["problem": label(problem)])
 
-        // Two attempts, in order of politeness.
-        //
-        // First the reopen event, which is what the Dock is supposed to send —
-        // most apps respond to it by restoring or creating a window.
-        //
-        // Some apps accept that event and then do nothing at all (CotEditor is
-        // one), so if it did not help, ask for a new blank document instead.
-        // Document-based apps generally honour that even when they ignore
-        // reopen, and a blank document is a far better outcome than an app that
-        // simply will not appear.
-        var asked = AppReopen.ask(app)
-        if showsNothing(pid: app.processIdentifier) {
-            asked = AppReopen.askForNewDocument(app) || asked
+        switch problem {
+
+        case .hidden:
+            // You pressed Cmd-H, or something did. Clicking the app is a request
+            // to see it, so simply unhide it and say nothing.
+            app.unhide()
+            WindowRescue.bringToFront(pid: app.processIdentifier)
+            confirm(app, name: name, problem: problem)
+
+        case .titleBarOutOfReach(let win, let frame):
+            // Visible but unmovable. Nudge it down just far enough to grab.
+            Usability.bringTitleBarIntoReach(win, frame: frame)
+            confirm(app, name: name, problem: problem)
+
+        case .notResponding:
+            // Nothing can be done to a frozen app from outside. Say so, because
+            // the person is otherwise left clicking a dead icon.
+            RepairLog.write(event: "app_unusable_unfixed",
+                            detail: ["problem": "notResponding"])
+            onUnfixable?(name, problem)
+
+        case .nothingToShow:
+            // Ask for a window the way the Dock is supposed to, then fall back to
+            // asking for a blank document, which works on apps that swallow the
+            // reopen event.
+            var asked = AppReopen.ask(app)
+            if showsNothing(pid: app.processIdentifier) {
+                asked = AppReopen.askForNewDocument(app) || asked
+            }
+            _ = asked
+            confirm(app, name: name, problem: problem)
         }
+    }
 
-        // Give it a moment, then see whether anything actually appeared.
+    /// Looks again after a moment. Silence if the repair worked; an explanation
+    /// if it did not.
+    private func confirm(_ app: NSRunningApplication, name: String,
+                         problem: Usability.Problem) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self else { return }
-            if self.showsNothing(pid: app.processIdentifier) {
-                RepairLog.write(event: "app_showed_nothing_unfixed",
-                                detail: ["asked": asked])
-                self.onUnfixable?(name)
+            if Usability.problem(for: app) != nil {
+                RepairLog.write(event: "app_unusable_unfixed",
+                                detail: ["problem": self.label(problem)])
+                self.onUnfixable?(name, problem)
             } else {
-                RepairLog.write(event: "app_showed_nothing_fixed", detail: [:])
+                RepairLog.write(event: "app_unusable_fixed",
+                                detail: ["problem": self.label(problem)])
             }
+        }
+    }
+
+    /// Short name for the log. Never shown on screen.
+    private func label(_ p: Usability.Problem) -> String {
+        switch p {
+        case .hidden:              return "hidden"
+        case .notResponding:       return "notResponding"
+        case .titleBarOutOfReach:  return "titleBarOutOfReach"
+        case .nothingToShow:       return "nothingToShow"
         }
     }
 }

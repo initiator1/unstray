@@ -14,6 +14,78 @@ import Cocoa
 /// We match them up by position and size, since there is no shared identifier.
 enum WindowScan {
 
+    /// The message for whatever we could not fix. One place, so every one of
+    /// these passes the same read-aloud test.
+    static func unusable(appName: String, problem: Usability.Problem) -> Finding {
+        switch problem {
+        case .notResponding:  return appNotResponding(appName: appName)
+        case .hidden,
+             .nothingToShow:  return appShowsNothing(appName: appName)
+        case .titleBarOutOfReach: return titleBarOutOfReach(appName: appName)
+        }
+    }
+
+    /// The app has stopped answering. Nothing outside it can fix that, so this
+    /// exists purely so nobody is left clicking a dead picture in the bar.
+    static func appNotResponding(appName: String) -> Finding {
+        Finding(
+            id: "not-responding",
+            kind: .appNotResponding,
+            severity: .nowBroken,
+            headline: "\(appName) has stopped answering.",
+            explanation: """
+            You did not break it, and clicking again will not wake it up.
+
+            \(appName) is still running, but it has stopped listening to your Mac, \
+            so nothing you click reaches it. This happens to every app sometimes.
+
+            Most of the time it recovers on its own after a minute. If it does \
+            not, you can force it to quit and open it again — you may lose \
+            anything you had not saved.
+            """,
+            actionLabel: "Show me how to force it to quit",
+            costWarning: nil,
+            technicalNote: "AX request timed out (kAXErrorCannotComplete) at 0.5s while app was frontmost.",
+            repair: {
+                // Opens the panel where a person can force-quit safely, rather
+                // than doing it for them and losing their unsaved work.
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
+                return true
+            }
+        )
+    }
+
+    /// The window is on screen but its top edge is not, so it cannot be dragged.
+    static func titleBarOutOfReach(appName: String) -> Finding {
+        Finding(
+            id: "title-bar-out-of-reach",
+            kind: .titleBarOutOfReach,
+            severity: .nowBroken,
+            headline: "You can see \(appName), but you cannot move it.",
+            explanation: """
+            The strip along the top of a thing is what you drag to move it. \
+            \(appName)'s strip is above the top of your screen, so there is \
+            nothing left to grab.
+
+            That is not your fault. It usually happens after a screen is \
+            unplugged, or after your Mac has rearranged things on its own.
+
+            I can slide it down so you can reach the top of it again.
+            """,
+            actionLabel: "Slide it back down",
+            costWarning: nil,
+            technicalNote: "Window intersects a screen but its top 30pt strip does not; no grabbable title bar.",
+            repair: {
+                guard let app = NSWorkspace.shared.runningApplications.first(where: {
+                    $0.localizedName == appName
+                }) else { return false }
+                guard case .titleBarOutOfReach(let w, let f)? =
+                        Usability.problem(for: app) else { return false }
+                return Usability.bringTitleBarIntoReach(w, frame: f)
+            }
+        )
+    }
+
     /// Built when you switched to an app, nothing appeared, and asking the app
     /// to open a window did not work either. Apple's FB21087054.
     static func appShowsNothing(appName: String) -> Finding {
