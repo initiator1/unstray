@@ -103,10 +103,20 @@ final class EmptyAppWatch {
         let name = app.localizedName ?? "That app"
         RepairLog.write(event: "app_showed_nothing", detail: ["fixing": true])
 
-        // Ask the app to open a window, the same way the Dock is supposed to.
-        // This is the only repair that helps here: there is no window to move,
-        // so the app has to be persuaded to make one.
-        let asked = AppReopen.ask(app)
+        // Two attempts, in order of politeness.
+        //
+        // First the reopen event, which is what the Dock is supposed to send —
+        // most apps respond to it by restoring or creating a window.
+        //
+        // Some apps accept that event and then do nothing at all (CotEditor is
+        // one), so if it did not help, ask for a new blank document instead.
+        // Document-based apps generally honour that even when they ignore
+        // reopen, and a blank document is a far better outcome than an app that
+        // simply will not appear.
+        var asked = AppReopen.ask(app)
+        if showsNothing(pid: app.processIdentifier) {
+            asked = AppReopen.askForNewDocument(app) || asked
+        }
 
         // Give it a moment, then see whether anything actually appeared.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
@@ -137,7 +147,22 @@ enum AppReopen {
             $0.localizedName == name
         }) else { return false }
         WindowRescue.bringToFront(pid: app.processIdentifier)
-        return ask(app)
+        if ask(app) { return true }
+        return askForNewDocument(app)
+    }
+
+    /// Asks a document-based app to make a new, empty document.
+    ///
+    /// The fallback for apps that swallow the reopen event. Only sent when the
+    /// app is already frontmost with nothing on screen, so this cannot surprise
+    /// anyone with an unwanted document while they are working.
+    @discardableResult
+    static func askForNewDocument(_ app: NSRunningApplication) -> Bool {
+        guard let name = app.localizedName else { return false }
+        let script = "tell application \"\(name)\" to make new document"
+        var err: NSDictionary?
+        NSAppleScript(source: script)?.executeAndReturnError(&err)
+        return err == nil
     }
 
     /// Sends the standard reopen Apple event. Returns whether it was accepted;
