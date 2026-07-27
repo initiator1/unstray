@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// every candidate was already taken by another app.
     private(set) var hotKeyLabel: String? = "\u{2325}\u{2318}R"
     private var model = VerdictModel()
+    private let emptyAppWatch = EmptyAppWatch()
     private var verdictObserver: AnyCancellable?
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -49,6 +50,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Keep note of which app the person is actually using, so the rescue
         // key knows what to go and find.
         ActivityWatch.shared.start()
+
+        // Clicking an app IS the request to see it. When one comes forward with
+        // nothing to show, fix it without asking; speak only if that fails.
+        emptyAppWatch.onUnfixable = { [weak self] appName in
+            self?.model.showAppShowsNothing(appName: appName)
+            self?.showPanel(sticky: true, keepVerdict: true)
+        }
+        emptyAppWatch.start()
 
         Lifecycle.enableLaunchAtLoginOnce()
 
@@ -233,9 +242,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// person clicking on whatever they were reaching for; a notice that
     /// vanishes before it is read is the same silent failure this app exists
     /// to correct. Sticky panels close only via their own buttons.
-    private func showPanel(sticky: Bool = false) {
+    /// `keepVerdict` is for the times we already know what to say — rechecking
+    /// would scan for settings and stray windows and overwrite it with a cheerful
+    /// "all clear", which is how this panel first shipped saying the opposite of
+    /// what it had just detected.
+    private func showPanel(sticky: Bool = false, keepVerdict: Bool = false) {
         guard let b = statusItem.button, !popover.isShown else { return }
-        model.recheck()
+        if !keepVerdict { model.recheck() }
         popover.behavior = sticky ? .applicationDefined : .transient
         popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
         if sticky {
@@ -323,6 +336,14 @@ final class VerdictModel: ObservableObject {
             verdict = .allWell(lastCheckedDescription: "Checked just now")
         }
         if let reason { RepairLog.write(event: "rechecked", detail: ["reason": reason]) }
+    }
+
+    /// Shows the "you clicked it and nothing came up" panel.
+    func showAppShowsNothing(appName: String) {
+        verdict = .somethingWrong(
+            primary: WindowScan.appShowsNothing(appName: appName),
+            alsoFound: []
+        )
     }
 
     func repair(_ f: Finding) {

@@ -14,6 +14,31 @@ import Cocoa
 /// We match them up by position and size, since there is no shared identifier.
 enum WindowScan {
 
+    /// Built when you switched to an app, nothing appeared, and asking the app
+    /// to open a window did not work either. Apple's FB21087054.
+    static func appShowsNothing(appName: String) -> Finding {
+        Finding(
+            id: "shows-nothing",
+            kind: .appShowsNothing,
+            severity: .nowBroken,
+            headline: "You clicked \(appName) and nothing came up.",
+            explanation: """
+            This is a bug in macOS itself, not something you did. Clicking more \
+            times will not help.
+
+            \(appName) really is open — your Mac just did not give it anything to \
+            show you, and did not notice.
+
+            I asked it to open something for you and it did not answer. Opening \
+            \(appName) again usually works the second time.
+            """,
+            actionLabel: "Try again for me",
+            costWarning: nil,
+            technicalNote: "FB21087054: app frontmost, activationPolicy .regular, no window >=120pt tall on any screen; kAEReopenApplication sent, still nothing.",
+            repair: { AppReopen.askByName(appName) }
+        )
+    }
+
     struct Stranded {
         let appName: String
         let pid: pid_t
