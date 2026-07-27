@@ -38,6 +38,7 @@ swiftc -O \
   unstray/Core/RepairLog.swift \
   unstray/Core/Lifecycle.swift \
   unstray/Core/ActivityWatch.swift \
+  unstray/Core/EmptyAppWatch.swift \
   unstray/UI/Design.swift \
   unstray/UI/ScreenDiagram.swift \
   unstray/UI/PermissionPanel.swift \
