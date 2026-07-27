@@ -187,6 +187,46 @@ func testDiagram() {
     check("three screens still fit across", wide <= 320)
 }
 
+// MARK: - Can you actually use it?
+//
+// Existence is not usability. These guard the class of bug that let CotEditor
+// through: a window can exist and still be no use to anyone.
+
+func titleBarReachable(_ r: CGRect, _ screens: [CGRect]) -> Bool {
+    let bar = CGRect(x: r.minX, y: r.minY, width: r.width, height: 30)
+    return screens.contains { $0.intersects(bar) }
+}
+
+func testTitleBarReach() {
+    print("\ntitle bar reachability")
+    let one = [CGRect(x: 0, y: 0, width: 1440, height: 900)]
+    check("a normal window can be grabbed",
+          titleBarReachable(CGRect(x: 100, y: 100, width: 800, height: 600), one))
+    check("5pt above the top is still grabbable",
+          titleBarReachable(CGRect(x: 100, y: -5, width: 800, height: 600), one),
+          "part of the strip is still on screen")
+    check("40pt above the top cannot be grabbed",
+          !titleBarReachable(CGRect(x: 100, y: -40, width: 800, height: 600), one),
+          "the window is visible but there is nothing left to drag")
+    check("flush with the top edge is grabbable",
+          titleBarReachable(CGRect(x: 100, y: 0, width: 800, height: 600), one))
+    check("far above the screen cannot be grabbed",
+          !titleBarReachable(CGRect(x: 100, y: -500, width: 800, height: 600), one))
+}
+
+func testUsabilityVsExistence() {
+    print("\nusability is not existence")
+    let one = [CGRect(x: 0, y: 0, width: 1440, height: 900)]
+    // The CotEditor case: leftovers exist, inside the screen, and are useless.
+    let leftover = CGRect(x: 0, y: 0, width: 1168, height: 26)
+    check("a 26pt strip is not something to look at",
+          !isRealWindow(width: leftover.width, height: leftover.height, layer: 0),
+          "this exact shape made an early version report 'all clear'")
+    check("a 26pt strip does intersect the screen, which is why size must be checked",
+          one.contains { $0.intersects(leftover) },
+          "geometry alone would call this healthy")
+}
+
 // MARK: -
 
 print("unstray core tests")
@@ -197,6 +237,8 @@ testSeverityOrder()
 testVersionDrift()
 testHeadlines()
 testDiagram()
+testTitleBarReach()
+testUsabilityVsExistence()
 
 print("\n\(checks - failures)/\(checks) passed")
 exit(failures == 0 ? 0 : 1)

@@ -53,8 +53,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Clicking an app IS the request to see it. When one comes forward with
         // nothing to show, fix it without asking; speak only if that fails.
-        emptyAppWatch.onUnfixable = { [weak self] appName in
-            self?.model.showAppShowsNothing(appName: appName)
+        emptyAppWatch.onUnfixable = { [weak self] appName, problem in
+            self?.model.showUnusable(appName: appName, problem: problem)
             self?.showPanel(sticky: true, keepVerdict: true)
         }
         emptyAppWatch.start()
@@ -338,10 +338,10 @@ final class VerdictModel: ObservableObject {
         if let reason { RepairLog.write(event: "rechecked", detail: ["reason": reason]) }
     }
 
-    /// Shows the "you clicked it and nothing came up" panel.
-    func showAppShowsNothing(appName: String) {
+    /// Shows whatever we could not fix about the app you just switched to.
+    func showUnusable(appName: String, problem: Usability.Problem) {
         verdict = .somethingWrong(
-            primary: WindowScan.appShowsNothing(appName: appName),
+            primary: WindowScan.unusable(appName: appName, problem: problem),
             alsoFound: []
         )
     }
