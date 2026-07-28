@@ -163,12 +163,29 @@ enum AppReopen {
 
     /// Asks a document-based app to make a new, empty document.
     ///
-    /// The fallback for apps that swallow the reopen event. Only sent when the
-    /// app is already frontmost with nothing on screen, so this cannot surprise
-    /// anyone with an unwanted document while they are working.
+    /// ## Why this is a last resort, not a normal repair
+    ///
+    /// This creates a REAL document. In TextEdit that means an untitled file that
+    /// later asks "do you want to keep this?" when the person quits — a dialog
+    /// about something they never created. Leaving debris in someone's app to fix
+    /// a window bug is a worse outcome than the bug.
+    ///
+    /// So it is only used when the polite request has already failed, and only
+    /// for apps where a blank document is genuinely harmless. Apps that treat a
+    /// new document as a side effect worth confirming are excluded.
     @discardableResult
     static func askForNewDocument(_ app: NSRunningApplication) -> Bool {
         guard let name = app.localizedName else { return false }
+
+        // Apps where a stray untitled document is a nuisance rather than a
+        // rescue: they prompt to save it, so the person ends up dealing with a
+        // file they never made. Better to explain the problem than create one.
+        let leavesDebris: Set<String> = [
+            "TextEdit", "Pages", "Numbers", "Keynote", "Preview",
+            "Script Editor", "CotEditor", "BBEdit", "Xcode"
+        ]
+        guard !leavesDebris.contains(name) else { return false }
+
         let script = "tell application \"\(name)\" to make new document"
         var err: NSDictionary?
         NSAppleScript(source: script)?.executeAndReturnError(&err)

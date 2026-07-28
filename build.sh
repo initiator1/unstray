@@ -20,6 +20,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>LSUIElement</key><true/>
   <key>CFBundleIconFile</key><string>unstray</string>
   <key>NSHumanReadableCopyright</key><string>Personal utility</string>
+  <!-- Required for the "ask an app to open a window" fallback. Without this key
+       macOS silently blocks NSAppleScript and may terminate the app outright. -->
+  <key>NSAppleEventsUsageDescription</key><string>unstray asks an app to open a window when you click it and nothing appears.</string>
 </dict></plist>
 PLIST
 
