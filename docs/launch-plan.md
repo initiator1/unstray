@@ -137,7 +137,14 @@ holds both certificates and build.sh deliberately prefers the organisation one.
 
 ## Launch sequence
 
-1. **Public GitHub repo, MIT.** Notarized `.dmg` attached to a tagged release.
+1. **Public GitHub repo, MIT** at `github.com/initiator1/unstray`. Notarized
+   `.dmg` attached to a tagged release.
+
+   Not an organisation: `INITIATOR` is taken on GitHub, and an empty org for one
+   repo is ceremony. A repo can be transferred to an org later with automatic
+   redirects, so this is reversible. The copyright line and the code signature
+   both already say INITIATOR LLC, and the signature is what people actually see
+   when they open the app — a far stronger signal than the URL.
 2. **Show HN.** Median is 2 points, but Mac menu-bar tools do break out —
    [Badgeify: 118 points](https://news.ycombinator.com/item?id=43620471) (Apr
    2025), [Itsyhome: 57](https://news.ycombinator.com/item?id=46967898) (Feb

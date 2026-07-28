@@ -187,7 +187,7 @@ Short version of the hard parts:
 
 ## Bugs and questions
 
-Open an issue: https://github.com/INITIATOR/unstray/issues
+Open an issue: https://github.com/initiator1/unstray/issues
 
 ## Licence
 
