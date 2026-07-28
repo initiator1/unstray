@@ -191,6 +191,12 @@ Short version of the hard parts:
   menu-bar app. The one call that reliably works is a deprecated Carbon
   function Swift refuses to import, hence a small C shim.
 
+## Support
+
+unstray is free and always will be. If it saved you from clicking a Dock icon
+five times, you can [sponsor it on GitHub](https://github.com/sponsors/initiator1)
+— entirely optional, and it changes nothing about the app.
+
 ## Bugs and questions
 
 Open an issue: https://github.com/initiator1/unstray/issues

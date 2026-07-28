@@ -1,0 +1,3 @@
+# Shows a "Sponsor" button on the repo once the account exists.
+# Inert until then — GitHub simply omits the button, no broken link.
+github: initiator1
