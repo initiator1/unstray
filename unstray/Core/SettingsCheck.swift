@@ -1,4 +1,4 @@
-import Foundation
+import Cocoa
 
 /// Reads the three macOS settings that decide whether your Mac can lose things.
 ///
@@ -50,20 +50,35 @@ enum SettingsCheck {
         let spanning = readBool(domain: "com.apple.spaces", key: "spans-displays") ?? false
         guard spanning else { return nil }
 
+        // Never describe a symptom the person cannot be having. With one screen
+        // attached there are no "other screens" to go black, so this is a warning
+        // about the next time they plug something in, not a report of a problem.
+        let multiScreen = NSScreen.screens.count > 1
+
         return Finding(
             id: "black-displays",
             kind: .blackDisplays,
-            severity: .nowBroken,
-            headline: "Your other screens go black when you make a video full screen.",
-            explanation: """
-            That is not your fault, and nothing is broken.
+            severity: multiScreen ? .nowBroken : .willBiteLater,
+            headline: multiScreen
+                ? "Your other screens go black when something fills the screen."
+                : "Your screens will go black when you plug in another one.",
+            explanation: multiScreen
+                ? """
+                  A setting is switched off, so your Mac treats all your screens \
+                  as one big one. Make a video full screen and it clears the \
+                  others to make room.
 
-            A setting got turned off, and while it is off your Mac treats all of \
-            your screens as one big screen. So when you fill "the whole screen", \
-            it empties the others to make room.
+                  Switching it back on gives each screen its own windows again.
+                  """
+                : """
+                  A setting is switched off that only matters once you have more \
+                  than one screen. While it is off, your Mac treats every screen \
+                  you plug in as part of one big one, so a full-screen video \
+                  blanks the rest.
 
-            I can turn that setting back on. Then each screen keeps its own things.
-            """,
+                  Nothing is wrong today. Worth switching back on before it \
+                  catches you out.
+                  """,
             actionLabel: "Fix this for me",
             costWarning: "Your Mac has to log you out and back in before this works. Save anything you are in the middle of first.",
             technicalNote: "com.apple.spaces spans-displays = 1; want 0. 'Displays have separate Spaces' is OFF. Requires logout.",
@@ -90,15 +105,13 @@ enum SettingsCheck {
             severity: .nowBroken,
             headline: "You click an app and end up looking at an empty screen.",
             explanation: """
-            Your Mac can hold several screenfuls of things at once, and it only \
-            shows you one at a time.
+            Your Mac keeps more than one desktop, and shows you one at a time.
 
-            Right now a setting is telling your Mac not to take you to where an \
-            app's things are. So the app opens — but it opens somewhere you are \
-            not looking, and you get left staring at nothing.
+            A setting is telling it not to follow an app to the desktop its \
+            windows are on. The app opens, just somewhere you are not looking.
 
-            Turning that setting back on makes your Mac take you to the app \
-            instead of leaving you behind.
+            Switching it back on means your Mac takes you there instead of \
+            leaving you behind.
             """,
             actionLabel: "Fix this for me",
             costWarning: nil,
@@ -120,17 +133,16 @@ enum SettingsCheck {
             id: "hidden-minimized",
             kind: .hiddenMinimized,
             severity: .willBiteLater,
-            headline: "Things you shrink down disappear with no way to find them.",
+            headline: "Windows you shrink down vanish with no way to find them.",
             explanation: """
-            When you shrink something down to the bar at the bottom of your \
-            screen, it normally gets its own little picture there, so you can \
-            click it to get it back.
+            Shrink a window and it should get its own icon in the bar at the \
+            bottom, so you can click it to bring it back.
 
-            Right now your Mac is tucking those inside the app's own picture \
-            instead. Nothing shows up in the bar, so there is no sign the thing \
-            still exists — and clicking the app often will not bring it back.
+            A setting is tucking them inside the app's icon instead. Nothing \
+            appears in the bar, so there is no sign the window is still there, \
+            and clicking the app often will not restore it.
 
-            Giving them their own picture again makes them easy to find.
+            Switching it back gives each one its own icon again.
             """,
             actionLabel: "Fix this for me",
             costWarning: nil,

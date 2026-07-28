@@ -34,14 +34,12 @@ enum WindowScan {
             severity: .nowBroken,
             headline: "\(appName) has stopped answering.",
             explanation: """
-            You did not break it, and clicking again will not wake it up.
+            Clicking again will not wake it up. \(appName) is still running, it \
+            has just stopped listening, so nothing you click reaches it.
 
-            \(appName) is still running, but it has stopped listening to your Mac, \
-            so nothing you click reaches it. This happens to every app sometimes.
-
-            Most of the time it recovers on its own after a minute. If it does \
-            not, you can force it to quit and open it again — you may lose \
-            anything you had not saved.
+            It usually recovers on its own within a minute. If it does not, you \
+            can force it to quit and reopen it, though you may lose anything you \
+            had not saved.
             """,
             actionLabel: "Show me how to force it to quit",
             costWarning: nil,
@@ -63,14 +61,13 @@ enum WindowScan {
             severity: .nowBroken,
             headline: "You can see \(appName), but you cannot move it.",
             explanation: """
-            The strip along the top of a thing is what you drag to move it. \
-            \(appName)'s strip is above the top of your screen, so there is \
-            nothing left to grab.
+            You move a window by dragging its top edge. \(appName)'s top edge is \
+            above your screen, so there is nothing left to grab.
 
-            That is not your fault. It usually happens after a screen is \
-            unplugged, or after your Mac has rearranged things on its own.
+            This usually happens after a screen is unplugged, or when your Mac \
+            rearranges things on its own.
 
-            I can slide it down so you can reach the top of it again.
+            I can slide it down until you can reach it again.
             """,
             actionLabel: "Slide it back down",
             costWarning: nil,
@@ -95,14 +92,13 @@ enum WindowScan {
             severity: .nowBroken,
             headline: "You clicked \(appName) and nothing came up.",
             explanation: """
-            This is a bug in macOS itself, not something you did. Clicking more \
-            times will not help.
+            This is a bug in macOS, and clicking more times will not help.
 
-            \(appName) really is open — your Mac just did not give it anything to \
+            \(appName) really is open. Your Mac just never gave it a window to \
             show you, and did not notice.
 
-            I asked it to open something for you and it did not answer. Opening \
-            \(appName) again usually works the second time.
+            I asked it to open one and it did not answer. Quitting \(appName) and \
+            opening it again usually sorts it out.
             """,
             actionLabel: "Try again for me",
             costWarning: nil,
@@ -124,6 +120,13 @@ enum WindowScan {
     /// scan reported eight "problems" that were all menu-bar helpers.
     private static func isBackgroundHelper(_ app: NSRunningApplication) -> Bool {
         app.activationPolicy != .regular
+    }
+
+    /// True when this app has at least one window you can actually see.
+    private static func hasVisibleWindow(pid: pid_t, screens: [CGRect]) -> Bool {
+        Usability.realWindows(pid: pid).contains { w in
+            screens.contains { $0.intersects(w) }
+        }
     }
 
     /// True when this rectangle touches none of the screens you actually have.
@@ -174,6 +177,12 @@ enum WindowScan {
             let frame = CGRect(x: x, y: y, width: width, height: height)
             guard isUnreachable(frame, screens: screens) else { continue }
 
+            // Skip apps that also have a window you can see. Telling someone
+            // "you cannot see it" about an app in front of them is worse than
+            // saying nothing: a stray second window is not a lost app, and this
+            // once reported the very app the person was reading it in.
+            guard !hasVisibleWindow(pid: pidNum, screens: screens) else { continue }
+
             out.append(Stranded(
                 appName: app.localizedName ?? "Something",
                 pid: pidNum,
@@ -192,11 +201,13 @@ enum WindowScan {
         // Name the actual apps. "Your Notes and your Chrome" beats "3 windows"
         // for someone who does not know the word "window".
         let names = Array(Set(stranded.map { $0.appName })).sorted()
+        // No "your" — plenty of apps have proper names, and "Your Claude" reads
+        // like a typo. Naming the app plainly works for every case.
         let subject: String
         switch names.count {
-        case 1:  subject = "Your \(names[0]) is"
-        case 2:  subject = "Your \(names[0]) and your \(names[1]) are"
-        default: subject = "Your \(names[0]), your \(names[1]), and \(names.count - 2) other thing\(names.count - 2 == 1 ? "" : "s") are"
+        case 1:  subject = "\(names[0]) is"
+        case 2:  subject = "\(names[0]) and \(names[1]) are"
+        default: subject = "\(names[0]), \(names[1]), and \(names.count - 2) other app\(names.count - 2 == 1 ? "" : "s") are"
         }
 
         return Finding(
@@ -205,14 +216,16 @@ enum WindowScan {
             severity: .nowBroken,
             headline: "\(subject) open, but you cannot see \(names.count == 1 ? "it" : "them").",
             explanation: """
-            You had another screen plugged in at some point. When it was \
-            unplugged, your Mac left \(names.count == 1 ? "this" : "these") sitting \
-            where that screen used to be — past the edge of every screen you have now.
+            You had another screen plugged in at some point. When it went away, \
+            your Mac left \(names.count == 1 ? "this window" : "these windows") \
+            sitting where that screen used to be, past the edge of everything you \
+            have now.
 
-            Nothing was lost. \(names.count == 1 ? "It is" : "They are") still open. \
-            \(names.count == 1 ? "It is" : "They are") just parked somewhere you cannot look.
+            Nothing is lost — \(names.count == 1 ? "it is" : "they are") still \
+            open, just parked somewhere you cannot look.
 
-            I can pull \(names.count == 1 ? "it" : "them") back to the screen you are using.
+            I can bring \(names.count == 1 ? "it" : "them") back to the screen \
+            you are using.
             """,
             actionLabel: names.count == 1 ? "Bring it back" : "Bring them back",
             costWarning: nil,
