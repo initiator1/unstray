@@ -52,9 +52,24 @@ A utility is not.
 - **September 2026** — Homebrew removes non-notarized casks from the official
   tap, so notarization is required before a cask is worth submitting.
 
-Account, for the record: INITIATOR LLC, Team ID MDWFZC6396, enrolled as
-Organization, Account Holder role. Signed builds show "INITIATOR LLC" in
-Gatekeeper, not a personal name.
+Account, for the record, confirmed against Apple's own membership page:
+
+| | |
+|---|---|
+| Entity name | INITIATOR LLC |
+| Team ID | MDWFZC6396 |
+| Enrolled as | Organization |
+| Role | Account Holder |
+| Apple ID for notarization | `db1@pm.me` |
+
+Note the Apple ID is the personal one, not `initiatorllc@icloud.com` — the
+*entity* is the LLC, the *login* is a personal Apple ID. Apple's own account page
+states it: "important messages ... to the email address associated with your
+Apple Account (db1@pm.me)". Worth writing down, because guessing it wrong fails
+silently until the first notarization attempt.
+
+Signed builds show "INITIATOR LLC" in Gatekeeper, not a personal name — the team
+holds both certificates and build.sh deliberately prefers the organisation one.
 
 ## Blockers — must be done before anyone else runs this
 
