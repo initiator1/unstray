@@ -172,7 +172,7 @@ private struct ProblemPanel: View {
                         .fill(D.attention)
                         .frame(width: 5, height: 5)
                         .accessibilityHidden(true)
-                    Text(finding.blamesOSUpdate ? "Your Mac just updated" : "Found something")
+                    Text(finding.followsOSUpdate ? "Checked after an update" : "Found something")
                         .font(D.label(11))
                         .tracking(1.1)
                         .foregroundStyle(D.attention)
@@ -233,12 +233,17 @@ private struct ProblemPanel: View {
         .onAppear { appeared = true }
     }
 
-    /// When an update caused this, that fact goes first — it is the answer to
-    /// "why is this happening today, when it was fine yesterday?"
+    /// After an update, say so — but only as timing, never as blame.
+    ///
+    /// All we actually know is that macOS changed version since we last looked
+    /// and something is wrong now. We do NOT know the update caused it; the
+    /// setting may well have been wrong beforehand. Saying "the update did this"
+    /// would be inventing a cause, and this app is built on telling people the
+    /// truth about their Mac.
     private var explanationText: String {
-        guard finding.blamesOSUpdate else { return finding.explanation }
-        return "Your Mac installed an update, and the update changed one of "
-             + "its own settings without telling you.\n\n"
+        guard finding.followsOSUpdate else { return finding.explanation }
+        return "Your Mac has been updated since I last looked, so this is a good "
+             + "moment to check.\n\n"
              + finding.explanation
     }
 
