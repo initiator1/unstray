@@ -31,10 +31,16 @@ None of this is your fault. These are real, open, unfixed bugs in macOS:
 In February 2026 Apple's release notes claimed a fix for a window bug, then
 silently edited it back to "known issue" the same night.
 
-Worse, macOS quietly changes its own settings during updates. On the machine
-this was built for, an update turned off "Displays have separate Spaces" — which
-blacked out two 4K monitors and stranded five windows at coordinates no screen
-could reach. macOS never mentioned it.
+And three settings buried in System Settings decide whether any of this can
+happen to you. On the machine this was built for, "Displays have separate Spaces"
+had been switched off months earlier — by hand, as a guess at stopping windows
+from disappearing. It is a plausible-sounding fix that makes things worse: it
+blacked out two 4K monitors on any full-screen video and left windows stranded
+where no screen could reach.
+
+Nothing in macOS connects the setting to the symptom, so the guess looked
+harmless and the cause was long forgotten. That is the ordinary version of this
+problem — not sabotage, just a reasonable change nobody could trace back.
 
 ## What unstray does
 

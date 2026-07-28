@@ -15,8 +15,13 @@ In July 2026 a Mac running macOS 26.5 had three connected screens and 71 open
 windows. Only 5 were visible. Five more were parked at coordinates no screen
 could reach. Making a video full screen blacked out two 4K monitors.
 
-The owner had done none of this. A macOS update had silently turned off a
-setting called "Displays have separate Spaces", and macOS never mentioned it.
+The owner had turned off a setting called "Displays have separate Spaces"
+himself, months earlier, trying to stop windows from disappearing. It is a
+plausible-sounding fix that makes the problem worse, and nothing in macOS told
+him so. He had long since forgotten changing it.
+
+That is the more common story, and a harder one: the setting was not sabotage,
+it was a reasonable guess that backfired silently.
 
 Underneath are three real, open, unfixed Apple bugs:
 

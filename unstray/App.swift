@@ -312,12 +312,12 @@ final class VerdictModel: ObservableObject {
             findings.append(stranded)
         }
 
-        // If macOS changed under us and something is now wrong, say so. "Your
-        // Mac updated itself and changed this" is the answer to the question
-        // they are really asking, which is why this started happening today.
+        // Note that an update happened, so the panel can mention the timing.
+        // Timing only — we cannot know the update caused anything, and claiming
+        // it did would be making something up.
         if blameUpdate, !findings.isEmpty {
             for i in findings.indices where findings[i].kind != .strandedWindows {
-                findings[i].blamesOSUpdate = true
+                findings[i].followsOSUpdate = true
             }
         }
 

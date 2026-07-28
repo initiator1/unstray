@@ -11,6 +11,6 @@ First public version.
   unplugged — and brings them back to the screen you are using.
 - A rescue key (⌥⌘R, or ⌥⇧⌘R / ⌥⇧⌘W if something else already uses it) that
   gathers whatever app you are fighting with onto your screen.
-- Checks again by itself after a macOS update, which is when these settings
-  tend to change without telling you.
+- Checks again by itself after a macOS update, since a major upgrade or a
+  migration is a sensible moment to look.
 - Lives in the menu bar, starts with your Mac, and stays quiet until needed.

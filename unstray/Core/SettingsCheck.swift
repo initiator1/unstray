@@ -2,10 +2,11 @@ import Foundation
 
 /// Reads the three macOS settings that decide whether your Mac can lose things.
 ///
-/// All three have silently flipped on this machine at least once — `spans-displays`
-/// turned itself off during a Tahoe update, blacked out two monitors, and stranded
-/// five windows off the edge of every screen. Nobody touched it. That is the whole
-/// reason this app exists: the settings drift, and macOS never tells you.
+/// Any of the three can end up wrong, and macOS never mentions it either way.
+/// They get changed by hand — often by someone trying to fix the very problem the
+/// change then causes — and they can also differ after a major OS upgrade or a
+/// migration to a new Mac. Whatever the cause, nothing tells you, and the effects
+/// (black screens, windows you cannot reach) look nothing like a settings problem.
 enum SettingsCheck {
 
     // MARK: - Reading
