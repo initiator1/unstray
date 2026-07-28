@@ -73,7 +73,11 @@ holds both certificates and build.sh deliberately prefers the organisation one.
 
 ## Blockers — must be done before anyone else runs this
 
-- [ ] **Notarize.** Two steps, once each.
+- [x] **Notarize.** Done 2026-07-27 — submission accepted, ticket stapled and
+      validated. Credentials are in the keychain under the profile `unstray`, so
+      `./build.sh --notarize` needs no secrets from here on.
+
+      Original setup, for reference:
 
       First get an app-specific password at appleid.apple.com (Sign-In and
       Security -> App-Specific Passwords). Your regular Apple ID password will
