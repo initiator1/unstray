@@ -100,6 +100,17 @@ Apple Silicon. Not worth a security downgrade for a window bug.
 **Never fail silently.** If the app cannot help, it says so. Silently doing
 nothing is the exact bug it exists to fix.
 
+## Free, and why
+
+Free and MIT, deliberately. Not because a Mac utility cannot earn, but because
+this one is narrow: it does one job, most people meet it once, and the effort to
+build licensing and support would cost more than a small one-time price returns.
+
+The Mac App Store is closed to it regardless — moving another app's windows needs
+the Accessibility API, which is incompatible with the sandbox the Store requires.
+
+MIT does not rule out charging later if it finds a real audience.
+
 ## Out of scope
 
 Tiling, snapping, layouts, workspace management, anything requiring SIP off or
