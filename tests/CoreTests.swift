@@ -146,20 +146,20 @@ func testVersionDrift() {
 
 func subject(_ names: [String]) -> String {
     switch names.count {
-    case 1:  return "Your \(names[0]) is"
-    case 2:  return "Your \(names[0]) and your \(names[1]) are"
-    default: return "Your \(names[0]), your \(names[1]), and \(names.count - 2) other thing\(names.count - 2 == 1 ? "" : "s") are"
+    case 1:  return "\(names[0]) is"
+    case 2:  return "\(names[0]) and \(names[1]) are"
+    default: return "\(names[0]), \(names[1]), and \(names.count - 2) other app\(names.count - 2 == 1 ? "" : "s") are"
     }
 }
 
 func testHeadlines() {
     print("\nheadline wording")
-    check("one app", subject(["Notes"]) == "Your Notes is")
-    check("two apps", subject(["Notes", "Safari"]) == "Your Notes and your Safari are")
+    check("one app", subject(["Notes"]) == "Notes is")
+    check("two apps", subject(["Notes", "Safari"]) == "Notes and Safari are")
     check("three apps says 'one other thing'",
-          subject(["Notes", "Safari", "Mail"]).hasSuffix("and 1 other thing are"))
+          subject(["Notes", "Safari", "Mail"]).hasSuffix("and 1 other app are"))
     check("four apps pluralises",
-          subject(["Notes", "Safari", "Mail", "Music"]).hasSuffix("and 2 other things are"))
+          subject(["Notes", "Safari", "Mail", "Music"]).hasSuffix("and 2 other apps are"))
 }
 
 // MARK: - Screen picture layout

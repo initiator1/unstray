@@ -52,7 +52,7 @@ A person who:
 
 | Never write | Write instead |
 |---|---|
-| window | your Notes / your Chrome / the thing you were working in — name the actual app |
+| ~~window~~ | **Say "window".** Banning it pushed every string toward "things", which is vaguer and reads as machine-written. Name the actual app where you can ("Notes is open"), and use "window" plainly where you must. |
 | Space / Desktop (the virtual kind) | another screenful / a different set of windows |
 | Mission Control | the settings page (and then quote the exact button name) |
 | activate / focus / frontmost | bring it to the front / put it in front of the others |
@@ -136,3 +136,15 @@ Read it out loud to someone who has never used a computer.
 
 If they can say back what happened and what they should press, it passes.
 If they ask "what's a window?" — rewrite it.
+
+
+## Two rules learned the hard way
+
+**Never describe a symptom the person cannot be having.** "Your other screens go
+black" is false on a one-screen Mac. Check the machine's actual state before
+asserting anything about it — a wrong claim costs more trust than a vague one.
+
+**Do not offer reassurance nobody needs.** "That is not your fault" belongs on a
+window that has vanished, where a person really does assume they broke something.
+On a settings toggle it is unearned and reads as a script. Save it for when it is
+true.
