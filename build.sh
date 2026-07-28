@@ -64,9 +64,23 @@ fi
 # silently stops being able to move anything — the precise failure mode this
 # app exists to fix. Signing with Developer ID keeps one identity forever, so
 # the permission is granted once and stays granted.
-# Auto-detect the first Developer ID on this machine; override with UNSTRAY_SIGN_ID.
-SIGN_ID="${UNSTRAY_SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null \
-  | grep -o "Developer ID Application: .*" | head -1 | sed 's/"$//')}"
+# Which identity to sign with.
+#
+# A team can hold both a personal-name and an organisation certificate. The name
+# in the certificate is what a stranger sees in Gatekeeper when they open the
+# app, so prefer the organisation one and fall back to whatever exists.
+# Override with UNSTRAY_SIGN_ID.
+if [ -n "${UNSTRAY_SIGN_ID:-}" ]; then
+  SIGN_ID="$UNSTRAY_SIGN_ID"
+else
+  ALL_IDS=$(security find-identity -v -p codesigning 2>/dev/null \
+    | grep -o "Developer ID Application: .*" | sed 's/"$//')
+  # An organisation certificate has no comma and is not a personal name; there is
+  # no reliable flag for it, so prefer an explicit preference file if present.
+  SIGN_ID=$(echo "$ALL_IDS" | grep -i "LLC\|Inc\|Ltd\|GmbH\|Corp" | head -1)
+  [ -z "$SIGN_ID" ] && SIGN_ID=$(echo "$ALL_IDS" | head -1)
+fi
+
 if [ -n "$SIGN_ID" ] && security find-identity -v -p codesigning 2>/dev/null | grep -qF "$SIGN_ID"; then
   codesign --force --deep --options runtime --sign "$SIGN_ID" "$APP"
   echo "signed with: $SIGN_ID"
