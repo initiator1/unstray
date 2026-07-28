@@ -6,7 +6,7 @@ a computer can understand.
 
 For product context see [SPEC.md](SPEC.md). For architecture see [PLAN.md](PLAN.md).
 The voice rules are binding: [docs/plain-language.md](docs/plain-language.md).
-Distribution strategy and the pre-launch checklist: [docs/launch-plan.md](docs/launch-plan.md).
+Launch strategy and copy are kept out of the public repo, in `.internal/`.
 
 ## Run and build
 
