@@ -16,8 +16,15 @@ open build/unstray.app
 ```
 
 ```bash
-./run-tests.sh              # 33 core logic tests, ~1 second
+./run-tests.sh              # 40 core logic tests, ~1 second
+./build.sh --notarize       # release build; needs the `unstray` keychain profile
 ```
+
+**Releasing:** notarize BEFORE zipping, and verify the ticket survives the zip
+round-trip. `build/` is disposable — anything that rebuilds it (a fresh-clone
+test, a plain `./build.sh`) drops the stapled ticket, and v0.1 was briefly
+published un-notarized for exactly that reason. Always `xcrun stapler validate`
+the extracted zip before uploading.
 
 No Xcode project — `swiftc` straight to a bundle. A menu-bar app does not need
 more, and the repo stays readable. **New source files must be added to
