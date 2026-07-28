@@ -50,9 +50,10 @@ enum SettingsCheck {
         let spanning = readBool(domain: "com.apple.spaces", key: "spans-displays") ?? false
         guard spanning else { return nil }
 
-        // Never describe a symptom the person cannot be having. With one screen
-        // attached there are no "other screens" to go black, so this is a warning
-        // about the next time they plug something in, not a report of a problem.
+        // Never describe a symptom the person cannot be having, and never predict
+        // one either. With one screen attached, nothing is going wrong and nothing
+        // definitely will — the setting only bites if they add a screen AND then
+        // make something full screen. So say what is set, not what will happen.
         let multiScreen = NSScreen.screens.count > 1
 
         return Finding(
@@ -61,7 +62,7 @@ enum SettingsCheck {
             severity: multiScreen ? .nowBroken : .willBiteLater,
             headline: multiScreen
                 ? "Your other screens go black when something fills the screen."
-                : "Your screens will go black when you plug in another one.",
+                : "Your Mac is set to treat all your screens as one.",
             explanation: multiScreen
                 ? """
                   A setting is switched off, so your Mac treats all your screens \
@@ -71,15 +72,17 @@ enum SettingsCheck {
                   Switching it back on gives each screen its own windows again.
                   """
                 : """
-                  A setting is switched off that only matters once you have more \
-                  than one screen. While it is off, your Mac treats every screen \
-                  you plug in as part of one big one, so a full-screen video \
-                  blanks the rest.
+                  With one screen, this changes nothing and you would never notice.
 
-                  Nothing is wrong today. Worth switching back on before it \
-                  catches you out.
+                  It matters if you attach a second screen. Your Mac would treat \
+                  the pair as one big screen, so making a video full screen could \
+                  blank the other one instead of leaving it alone.
+
+                  Nothing is wrong right now. You can switch it back whenever you \
+                  like, or leave it — it is only worth doing before you next plug \
+                  something in.
                   """,
-            actionLabel: "Fix this for me",
+            actionLabel: multiScreen ? "Fix this for me" : "Switch it back on",
             costWarning: "Your Mac has to log you out and back in before this works. Save anything you are in the middle of first.",
             technicalNote: "com.apple.spaces spans-displays = 1; want 0. 'Displays have separate Spaces' is OFF. Requires logout.",
             repair: {

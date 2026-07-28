@@ -144,6 +144,14 @@ If they ask "what's a window?" — rewrite it.
 black" is false on a one-screen Mac. Check the machine's actual state before
 asserting anything about it — a wrong claim costs more trust than a vague one.
 
+**Do not predict one either.** The replacement, "Your screens will go black when
+you plug in another one", was equally untrue: the setting only bites if they add a
+screen AND then make something full screen. A headline should state what IS —
+"Your Mac is set to treat all your screens as one" — and let the explanation
+handle what might follow, in words that stay conditional ("could blank", not
+"will blank"). Alarm about a hypothetical is the same failure as alarm about a
+fiction.
+
 **Do not offer reassurance nobody needs.** "That is not your fault" belongs on a
 window that has vanished, where a person really does assume they broke something.
 On a settings toggle it is unearned and reads as a script. Save it for when it is
