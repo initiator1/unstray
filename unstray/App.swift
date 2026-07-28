@@ -61,14 +61,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         Lifecycle.enableLaunchAtLoginOnce()
 
-        // A macOS update is exactly when settings drift, so look straight away
-        // and be ready to say that the update is what changed things.
-        model.blameUpdate = Lifecycle.didOSUpdateSinceLastRun()
+        // An OS update is a sensible moment to look, so check straight away.
+        model.followsOSUpdate = Lifecycle.didOSUpdateSinceLastRun()
         model.recheck()
 
-        // If the update broke something, do not wait to be asked — open and
-        // say so. This is the one time the app is allowed to interrupt.
-        if model.blameUpdate, case .somethingWrong = model.verdict {
+        // Only interrupt for something that is actually wrong NOW.
+        //
+        // Opening by itself is the rudest thing this app can do, so the bar has
+        // to be high. A `willBiteLater` finding does not clear it: the
+        // single-screen version of the black-screens panel literally says
+        // "nothing is wrong right now", and interrupting someone to tell them
+        // nothing is wrong is worse than staying quiet. Those wait until they
+        // open the app themselves, and the menu bar icon carries the hint.
+        if model.followsOSUpdate, model.hasUrgentProblem {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 self?.showPanel(sticky: true)
             }
@@ -76,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         RepairLog.write(event: "launched", detail: [
             "os": Lifecycle.currentOSVersion,
-            "afterUpdate": model.blameUpdate,
+            "afterUpdate": model.followsOSUpdate,
             "launchesAtLogin": Lifecycle.launchesAtLogin
         ])
     }
@@ -292,9 +297,16 @@ final class VerdictModel: ObservableObject {
 
     private var permissionPoll: Timer?
 
-    /// Set once at launch when macOS has changed since we last ran, so the
-    /// first check after an update can name the culprit.
-    var blameUpdate = false
+    /// Set once at launch when macOS has changed version since we last ran.
+    /// Timing only — see Finding.followsOSUpdate.
+    var followsOSUpdate = false
+
+    /// True only when something is broken right now. Anything merely waiting to
+    /// bite does not earn an interruption.
+    var hasUrgentProblem: Bool {
+        guard case .somethingWrong(let primary, _) = verdict else { return false }
+        return primary.severity == .nowBroken
+    }
 
     func recheck(reason: String? = nil) {
         let permitted = WindowRescue.hasPermission
@@ -315,7 +327,7 @@ final class VerdictModel: ObservableObject {
         // Note that an update happened, so the panel can mention the timing.
         // Timing only — we cannot know the update caused anything, and claiming
         // it did would be making something up.
-        if blameUpdate, !findings.isEmpty {
+        if followsOSUpdate, !findings.isEmpty {
             for i in findings.indices where findings[i].kind != .strandedWindows {
                 findings[i].followsOSUpdate = true
             }
