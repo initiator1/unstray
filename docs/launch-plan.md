@@ -40,6 +40,22 @@ Meanwhile the reputation case is unusually strong, because this app is a
 in the 26.3 release notes the same night it was published. That is a story.
 A utility is not.
 
+## Dates that bite if nobody is watching
+
+- **1 June 2027 — Apple Developer Program renewal, and auto-renew is OFF.**
+  If the membership lapses, notarization stops working and anything already
+  shipped starts showing Gatekeeper warnings to people who download it. Either
+  switch auto-renew on in the account, or make sure this date is somewhere it
+  will actually be seen.
+- **28 July 2031** — the Developer ID certificate expires. Well past the
+  membership renewal, so the membership is the binding constraint.
+- **September 2026** — Homebrew removes non-notarized casks from the official
+  tap, so notarization is required before a cask is worth submitting.
+
+Account, for the record: INITIATOR LLC, Team ID MDWFZC6396, enrolled as
+Organization, Account Holder role. Signed builds show "INITIATOR LLC" in
+Gatekeeper, not a personal name.
+
 ## Blockers — must be done before anyone else runs this
 
 - [ ] **Notarize.** Two steps, once each.
