@@ -48,7 +48,10 @@ enum Usability {
         if !isResponding(pid: pid) { return .notResponding }
 
         let screens = NSScreen.screens.map { $0.frame }
-        let windows = realWindows(pid: pid)
+
+        // Count windows across every process in this app family, so a helper's
+        // window rescues the app it belongs to.
+        let windows = relatedPIDs(of: app).flatMap { realWindows(pid: $0) }
 
         // Nothing at all to look at.
         guard !windows.isEmpty else { return .nothingToShow }
@@ -85,6 +88,30 @@ enum Usability {
         // .cannotComplete is what a timeout looks like. Other errors mean the app
         // answered something, which is all we are asking about.
         return err != .cannotComplete
+    }
+
+    /// Every process that belongs to the same app as this one.
+    ///
+    /// Electron, Chromium and Steam-style apps put their real window in a helper
+    /// process with a different pid and a different bundle id. Asking "does THIS
+    /// pid have a window?" reports the main app as empty while its window sits
+    /// right there in the helper — which is exactly what happened with Steam.
+    ///
+    /// The reliable signal is the bundle path: a helper's bundle lives inside the
+    /// main app's bundle, so `Steam Helper.app` is under `Steam/Contents/...`.
+    static func relatedPIDs(of app: NSRunningApplication) -> [pid_t] {
+        var pids = [app.processIdentifier]
+        guard let base = app.bundleURL?.path else { return pids }
+
+        for other in NSWorkspace.shared.runningApplications
+        where other.processIdentifier != app.processIdentifier {
+            guard let p = other.bundleURL?.path else { continue }
+            // Helper inside this app, or this app inside a shared parent bundle.
+            if p.hasPrefix(base + "/") || base.hasPrefix(p + "/") {
+                pids.append(other.processIdentifier)
+            }
+        }
+        return pids
     }
 
     /// Windows big enough to be worth looking at, from every screenful.

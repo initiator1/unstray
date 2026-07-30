@@ -172,6 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if case .allWell = model.verdict { hasProblem = false } else { hasProblem = true }
             popover.behavior = hasProblem ? .applicationDefined : .transient
             popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
+            keepPanelOnScreen()
             popover.contentViewController?.view.window?.makeKey()
         }
     }
@@ -247,6 +248,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// person clicking on whatever they were reaching for; a notice that
     /// vanishes before it is read is the same silent failure this app exists
     /// to correct. Sticky panels close only via their own buttons.
+    /// Nudges the panel back on screen if the menu-bar icon is close enough to
+    /// the right edge that a 380pt panel would hang off it.
+    ///
+    /// NSPopover anchors to its button and does not clamp horizontally, so with the
+    /// icon near the corner the panel runs past the edge and the text is cut off
+    /// mid-sentence. Which is a particularly bad look for an app about windows
+    /// ending up somewhere you cannot read them.
+    private func keepPanelOnScreen() {
+        guard let win = popover.contentViewController?.view.window,
+              let screen = win.screen ?? NSScreen.main
+        else { return }
+
+        let visible = screen.visibleFrame
+        var f = win.frame
+        let margin: CGFloat = 8
+
+        if f.maxX > visible.maxX - margin {
+            f.origin.x = visible.maxX - f.width - margin
+        }
+        if f.minX < visible.minX + margin {
+            f.origin.x = visible.minX + margin
+        }
+        if f.origin != win.frame.origin {
+            win.setFrame(f, display: true)
+        }
+    }
+
     /// `keepVerdict` is for the times we already know what to say — rechecking
     /// would scan for settings and stray windows and overwrite it with a cheerful
     /// "all clear", which is how this panel first shipped saying the opposite of
@@ -256,6 +284,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !keepVerdict { model.recheck() }
         popover.behavior = sticky ? .applicationDefined : .transient
         popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
+        keepPanelOnScreen()
         if sticky {
             // Bring ourselves forward so the panel is not buried behind the
             // window the person clicks next.
