@@ -41,6 +41,7 @@ swiftc -O \
   unstray/Core/RepairLog.swift \
   unstray/Core/Lifecycle.swift \
   unstray/Core/ActivityWatch.swift \
+  unstray/Core/PanelPlacement.swift \
   unstray/Core/Usability.swift \
   unstray/Core/EmptyAppWatch.swift \
   unstray/UI/Design.swift \

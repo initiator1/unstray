@@ -274,29 +274,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               let win = popover.contentViewController?.view.window
         else { return }
 
-        // Use the screen the menu-bar icon is on. `win.screen` reports whichever
-        // screen holds most of the window, which is the wrong answer precisely
-        // when the window is hanging off an edge.
         let anchor = statusItem.button?.window?.frame.origin
-        let screen = anchor.flatMap { pt in
-            NSScreen.screens.first { $0.frame.contains(pt) }
-        } ?? win.screen ?? NSScreen.main
+        guard let screen = PanelPlacement.screen(forAnchor: anchor,
+                                                 panel: win.frame,
+                                                 screens: NSScreen.screens)
+        else { return }
 
-        guard let visible = screen?.visibleFrame else { return }
+        let target = PanelPlacement.clamp(win.frame, into: screen.visibleFrame)
+        guard target.origin != win.frame.origin else { return }
 
-        var f = win.frame
-        let margin: CGFloat = 8
-
-        if f.maxX > visible.maxX - margin { f.origin.x = visible.maxX - f.width - margin }
-        if f.minX < visible.minX + margin { f.origin.x = visible.minX + margin }
-        // Vertical too. A tall problem panel hanging under a menu bar can run
-        // straight off the bottom of a short display.
-        if f.maxY > visible.maxY - margin { f.origin.y = visible.maxY - f.height - margin }
-        if f.minY < visible.minY + margin { f.origin.y = visible.minY + margin }
-
-        guard f.origin != win.frame.origin else { return }
         isClamping = true
-        win.setFrame(f, display: true)
+        win.setFrame(target, display: true)
         isClamping = false
     }
 
