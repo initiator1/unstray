@@ -1,5 +1,14 @@
 import SwiftUI
 
+/// Measures how tall the panel's content wants to be, so it can size to content
+/// until the content would run off the screen.
+private struct PanelHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 /// The whole app, as far as a person is concerned: one answer to one question.
 ///
 /// The question is "is anything wrong right now?" — because that is the state a
@@ -18,31 +27,60 @@ struct VerdictView: View {
     let onDismiss: () -> Void
     let onQuit: () -> Void
 
+    @State private var contentHeight: CGFloat = 0
+
+    @ViewBuilder
+    private var panelContent: some View {
+        switch verdict {
+        case .needsPermission:
+            if awaitingPermission {
+                PermissionPendingPanel(
+                    onRecheck: onRecheck,
+                    onOpenSettings: onOpenPrivacySettings,
+                    onDismiss: onDismiss
+                )
+            } else {
+                PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
+            }
+        case .allWell(let when):
+            AllWellPanel(lastChecked: when, onRecheck: onRecheck, onDismiss: onDismiss)
+        case .somethingWrong(let primary, let also):
+            ProblemPanel(finding: primary, alsoFound: also,
+                         onRepair: onRepair, onDismiss: onDismiss)
+        }
+    }
+
+    /// How tall the panel may get before it starts scrolling.
+    ///
+    /// Positioning cannot save a panel that is taller than the screen, and the
+    /// problem panels run to about 630pt. That fits comfortably on this Mac, and
+    /// not at all on a small or scaled display, or with Larger Text switched on.
+    /// So cap it and let the rest scroll rather than fall off the bottom.
+    private var maxPanelHeight: CGFloat {
+        let visible = NSScreen.main?.visibleFrame.height ?? 800
+        return max(320, visible - 60)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            switch verdict {
-            case .needsPermission:
-                if awaitingPermission {
-                    PermissionPendingPanel(
-                        onRecheck: onRecheck,
-                        onOpenSettings: onOpenPrivacySettings,
-                        onDismiss: onDismiss
+            ScrollView {
+                panelContent
+                    .background(
+                        GeometryReader { g in
+                            Color.clear.preference(key: PanelHeightKey.self,
+                                                   value: g.size.height)
+                        }
                     )
-                } else {
-                    PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
-                }
-            case .allWell(let when):
-                AllWellPanel(lastChecked: when, onRecheck: onRecheck, onDismiss: onDismiss)
-            case .somethingWrong(let primary, let also):
-                ProblemPanel(finding: primary, alsoFound: also,
-                             onRepair: onRepair, onDismiss: onDismiss)
             }
+            // Sizes to the content until the content outgrows the screen.
+            .frame(height: min(max(contentHeight, 1), maxPanelHeight))
+            .onPreferenceChange(PanelHeightKey.self) { contentHeight = $0 }
 
             Divider().overlay(D.hairline)
 
+            // The footer stays put, so Quit is always reachable even when the
+            // panel above it is scrolling.
             HStack(spacing: 14) {
-                // Version is here so "which version are you on?" is answerable
-                // without digging through Finder.
                 Text("unstray \(Bundle.main.shortVersion)")
                     .font(D.label(11))
                     .foregroundStyle(D.inkFaint)

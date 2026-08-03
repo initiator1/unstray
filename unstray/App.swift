@@ -32,6 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var hotKeyLabel: String? = "\u{2325}\u{2318}R"
     private var model = VerdictModel()
     private let emptyAppWatch = EmptyAppWatch()
+    private var frameObservers: [NSObjectProtocol] = []
+    private var isClamping = false
     private var verdictObserver: AnyCancellable?
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -154,6 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the backstop for any sticky panel — buttons can be missed, Escape cannot.
     fileprivate func closePanel() {
         guard popover.isShown else { return }
+        stopWatchingPanelFrame()
         popover.behavior = .transient
         popover.performClose(nil)
     }
@@ -161,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func togglePopover() {
         guard let b = statusItem.button else { return }
         if popover.isShown {
+            stopWatchingPanelFrame()
             popover.behavior = .transient
             popover.performClose(nil)
         } else {
@@ -172,7 +176,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if case .allWell = model.verdict { hasProblem = false } else { hasProblem = true }
             popover.behavior = hasProblem ? .applicationDefined : .transient
             popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
-            keepPanelOnScreen()
+            clampPanel()
+            watchPanelFrame()
             popover.contentViewController?.view.window?.makeKey()
         }
     }
@@ -248,31 +253,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// person clicking on whatever they were reaching for; a notice that
     /// vanishes before it is read is the same silent failure this app exists
     /// to correct. Sticky panels close only via their own buttons.
-    /// Nudges the panel back on screen if the menu-bar icon is close enough to
-    /// the right edge that a 380pt panel would hang off it.
+    /// Keeps the panel fully on screen, and keeps it there.
     ///
-    /// NSPopover anchors to its button and does not clamp horizontally, so with the
-    /// icon near the corner the panel runs past the edge and the text is cut off
-    /// mid-sentence. Which is a particularly bad look for an app about windows
-    /// ending up somewhere you cannot read them.
-    private func keepPanelOnScreen() {
-        guard let win = popover.contentViewController?.view.window,
-              let screen = win.screen ?? NSScreen.main
+    /// NSPopover anchors to its button, does not clamp to the screen, and actively
+    /// repositions itself to track that anchor. With the menu-bar icon near a
+    /// corner the panel runs off the edge and the text is cut off mid-sentence —
+    /// a bad look for an app about windows ending up where you cannot read them.
+    ///
+    /// Three things went wrong in the first attempt at this, and all three are
+    /// why it only misbehaved "occasionally":
+    ///   - it clamped immediately after `show()`, while the popover was still
+    ///     animating, so it read a frame that was not final;
+    ///   - it only clamped horizontally, and a problem panel can be 600pt tall;
+    ///   - it clamped once, so any later resize (the panel height is driven by
+    ///     its content) or any repositioning by AppKit undid it.
+    /// So this now runs after the animation AND on every move or resize while
+    /// the panel is open.
+    private func clampPanel() {
+        guard !isClamping,
+              let win = popover.contentViewController?.view.window
         else { return }
 
-        let visible = screen.visibleFrame
+        // Use the screen the menu-bar icon is on. `win.screen` reports whichever
+        // screen holds most of the window, which is the wrong answer precisely
+        // when the window is hanging off an edge.
+        let anchor = statusItem.button?.window?.frame.origin
+        let screen = anchor.flatMap { pt in
+            NSScreen.screens.first { $0.frame.contains(pt) }
+        } ?? win.screen ?? NSScreen.main
+
+        guard let visible = screen?.visibleFrame else { return }
+
         var f = win.frame
         let margin: CGFloat = 8
 
-        if f.maxX > visible.maxX - margin {
-            f.origin.x = visible.maxX - f.width - margin
+        if f.maxX > visible.maxX - margin { f.origin.x = visible.maxX - f.width - margin }
+        if f.minX < visible.minX + margin { f.origin.x = visible.minX + margin }
+        // Vertical too. A tall problem panel hanging under a menu bar can run
+        // straight off the bottom of a short display.
+        if f.maxY > visible.maxY - margin { f.origin.y = visible.maxY - f.height - margin }
+        if f.minY < visible.minY + margin { f.origin.y = visible.minY + margin }
+
+        guard f.origin != win.frame.origin else { return }
+        isClamping = true
+        win.setFrame(f, display: true)
+        isClamping = false
+    }
+
+    /// Re-clamps for as long as the panel is open, since it can be moved or
+    /// resized after it appears.
+    private func watchPanelFrame() {
+        guard let win = popover.contentViewController?.view.window else { return }
+        for name in [NSWindow.didResizeNotification, NSWindow.didMoveNotification] {
+            let token = NotificationCenter.default.addObserver(
+                forName: name, object: win, queue: .main
+            ) { [weak self] _ in self?.clampPanel() }
+            frameObservers.append(token)
         }
-        if f.minX < visible.minX + margin {
-            f.origin.x = visible.minX + margin
+        // One more pass after the show animation finishes.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.clampPanel()
         }
-        if f.origin != win.frame.origin {
-            win.setFrame(f, display: true)
-        }
+    }
+
+    private func stopWatchingPanelFrame() {
+        frameObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        frameObservers.removeAll()
     }
 
     /// `keepVerdict` is for the times we already know what to say — rechecking
@@ -284,7 +330,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !keepVerdict { model.recheck() }
         popover.behavior = sticky ? .applicationDefined : .transient
         popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
-        keepPanelOnScreen()
+        clampPanel()
+        watchPanelFrame()
         if sticky {
             // Bring ourselves forward so the panel is not buried behind the
             // window the person clicks next.
