@@ -227,6 +227,76 @@ func testUsabilityVsExistence() {
           "geometry alone would call this healthy")
 }
 
+// MARK: - Where the panel is allowed to sit
+//
+// Three monitors side by side do not make one big rectangle. A tall monitor next
+// to a shorter one leaves dead space above the shorter one, and a panel near the
+// tall monitor's top-right corner spills into that gap and gets cut in half.
+// That is the real layout this was reported on.
+
+func clampPanel(_ panel: CGRect, _ visible: CGRect, margin: CGFloat = 8) -> CGRect {
+    var r = panel
+    if r.width >= visible.width - margin * 2 {
+        r.origin.x = visible.minX + margin
+    } else {
+        if r.maxX > visible.maxX - margin { r.origin.x = visible.maxX - r.width - margin }
+        if r.minX < visible.minX + margin { r.origin.x = visible.minX + margin }
+    }
+    if r.height >= visible.height - margin * 2 {
+        r.origin.y = visible.maxY - r.height - margin
+    } else {
+        if r.maxY > visible.maxY - margin { r.origin.y = visible.maxY - r.height - margin }
+        if r.minY < visible.minY + margin { r.origin.y = visible.minY + margin }
+    }
+    return r
+}
+
+func inside(_ r: CGRect, _ v: CGRect) -> Bool {
+    r.minX >= v.minX && r.maxX <= v.maxX && r.minY >= v.minY && r.maxY <= v.maxY
+}
+
+func testPanelPlacement() {
+    print("\npanel placement")
+
+    // The real desk: built-in in the middle, two 1080p monitors either side,
+    // both taller and offset downward.
+    let builtIn = CGRect(x: 0, y: 0, width: 1168, height: 728)
+    let left    = CGRect(x: -1920, y: -325, width: 1920, height: 1080)
+    let right   = CGRect(x: 1168, y: -325, width: 1920, height: 1080)
+
+    // The reported bug: upper-right of the LEFT monitor, spilling past x=0 into
+    // the gap above the built-in display, where no screen exists.
+    let spill = CGRect(x: -243, y: 289, width: 406, height: 420)
+    check("a panel at the left monitor's top-right does overflow it",
+          spill.maxX > left.maxX,
+          "overflows by \(Int(spill.maxX - left.maxX))pt — this is the reported case")
+    check("clamping pulls it fully back onto the left monitor",
+          inside(clampPanel(spill, left), left))
+
+    // Same shape on the right monitor.
+    let spillRight = CGRect(x: 2900, y: 500, width: 406, height: 420)
+    check("a panel overflowing the right monitor is pulled back",
+          inside(clampPanel(spillRight, right), right))
+
+    // Built-in: short display, tall panel.
+    let tall = CGRect(x: 800, y: 400, width: 406, height: 620)
+    check("a tall panel is pulled fully onto the built-in display",
+          inside(clampPanel(tall, builtIn), builtIn))
+
+    // A panel already in a good spot must not be moved at all.
+    let fine = CGRect(x: 100, y: 100, width: 406, height: 420)
+    check("a panel that already fits is left alone",
+          clampPanel(fine, builtIn) == fine)
+
+    // Bigger than the screen: pin to the top-left rather than centring, so the
+    // headline is what survives.
+    let huge = CGRect(x: 500, y: -200, width: 406, height: 900)
+    let pinned = clampPanel(huge, builtIn)
+    check("a panel taller than the screen is pinned to the top",
+          pinned.maxY == builtIn.maxY - 8,
+          "the headline matters more than the buttons")
+}
+
 // MARK: -
 
 print("unstray core tests")
@@ -239,6 +309,7 @@ testHeadlines()
 testDiagram()
 testTitleBarReach()
 testUsabilityVsExistence()
+testPanelPlacement()
 
 print("\n\(checks - failures)/\(checks) passed")
 exit(failures == 0 ? 0 : 1)
