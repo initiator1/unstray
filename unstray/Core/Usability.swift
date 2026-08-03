@@ -45,7 +45,14 @@ enum Usability {
 
         // Then whether the app is answering at all. A frozen app cannot be asked
         // anything else, so this has to come before any AX work.
-        if !isResponding(pid: pid) { return .notResponding }
+        //
+        // An app that has only just started is busy, not frozen. Relaunching
+        // through something like "Restart to Update" produces a brand new process
+        // that cannot answer for a moment, and accusing it of being frozen is both
+        // wrong and alarming. Give it room.
+        if !isResponding(pid: pid), !isStillStartingUp(app) {
+            return .notResponding
+        }
 
         let screens = NSScreen.screens.map { $0.frame }
 
@@ -88,6 +95,16 @@ enum Usability {
         // .cannotComplete is what a timeout looks like. Other errors mean the app
         // answered something, which is all we are asking about.
         return err != .cannotComplete
+    }
+
+    /// True when this app has not been running long enough to judge.
+    ///
+    /// Covers the launch and relaunch cases, including in-app updaters that quit
+    /// and immediately restart themselves.
+    static func isStillStartingUp(_ app: NSRunningApplication) -> Bool {
+        if !app.isFinishedLaunching { return true }
+        guard let started = app.launchDate else { return false }
+        return Date().timeIntervalSince(started) < 8
     }
 
     /// Every process that belongs to the same app as this one.
