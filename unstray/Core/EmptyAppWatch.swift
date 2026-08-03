@@ -95,11 +95,18 @@ final class EmptyAppWatch {
             confirm(app, name: name, problem: problem)
 
         case .notResponding:
-            // Nothing can be done to a frozen app from outside. Say so, because
-            // the person is otherwise left clicking a dead icon.
-            RepairLog.write(event: "app_unusable_unfixed",
-                            detail: ["problem": "notResponding"])
-            onUnfixable?(name, problem)
+            // The most cautious case, not the least.
+            //
+            // This fired the instant an app stopped answering, which meant it
+            // accused Claude of being frozen during its own "Restart to Update"
+            // — the app came back a second later. An app that is launching,
+            // relaunching, or briefly busy looks exactly like a frozen one at any
+            // single instant. The difference is only visible over time.
+            //
+            // So: watch it for several seconds and only speak if it never
+            // recovers. Nothing can be done about a frozen app anyway, so there
+            // is no cost to waiting and a real cost to being wrong.
+            watchForRecovery(app, name: name)
 
         case .nothingToShow:
             // Ask for a window the way the Dock is supposed to, then fall back to
@@ -111,6 +118,38 @@ final class EmptyAppWatch {
             }
             _ = asked
             confirm(app, name: name, problem: problem)
+        }
+    }
+
+    /// Watches an app that stopped answering, and only speaks if it stays that
+    /// way. A frozen app is frozen persistently; a restarting one is not.
+    private func watchForRecovery(_ app: NSRunningApplication, name: String,
+                                  checksLeft: Int = 5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            guard let self else { return }
+
+            // It quit, or it came back. Either way there is nothing to say.
+            guard !app.isTerminated else {
+                RepairLog.write(event: "app_unusable_moot", detail: ["reason": "quit"])
+                return
+            }
+            if Usability.isResponding(pid: app.processIdentifier) {
+                RepairLog.write(event: "app_unusable_fixed",
+                                detail: ["problem": "notResponding", "note": "recovered"])
+                return
+            }
+
+            // Still not answering. Keep waiting, up to about six seconds.
+            guard checksLeft > 0 else {
+                // Only bother them if they are still looking at it.
+                guard NSWorkspace.shared.frontmostApplication?.processIdentifier
+                        == app.processIdentifier else { return }
+                RepairLog.write(event: "app_unusable_unfixed",
+                                detail: ["problem": "notResponding"])
+                self.onUnfixable?(name, .notResponding)
+                return
+            }
+            self.watchForRecovery(app, name: name, checksLeft: checksLeft - 1)
         }
     }
 
