@@ -34,6 +34,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let emptyAppWatch = EmptyAppWatch()
     private var frameObservers: [NSObjectProtocol] = []
     private var isClamping = false
+
+    /// Something for the panel to hang from when the menu-bar icon is hidden.
+    /// Created once, on demand. See panelAnchor().
+    private var standInAnchor: NSWindow?
     private var verdictObserver: AnyCancellable?
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -150,6 +154,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         )
         popover.contentViewController = host
+
+        // A transient panel closes by itself when you click elsewhere, and that
+        // path goes through none of the buttons — so tidy up here or the frame
+        // watchers outlive the window they were watching.
+        NotificationCenter.default.addObserver(
+            forName: NSPopover.didCloseNotification, object: popover, queue: .main
+        ) { [weak self] _ in self?.stopWatchingPanelFrame() }
     }
 
     /// Escape always closes the panel, in every state. A keyboard way out is
@@ -162,7 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func togglePopover() {
-        guard let b = statusItem.button else { return }
+        guard statusItem.button != nil else { return }
         if popover.isShown {
             stopWatchingPanelFrame()
             popover.behavior = .transient
@@ -175,7 +186,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let hasProblem: Bool
             if case .allWell = model.verdict { hasProblem = false } else { hasProblem = true }
             popover.behavior = hasProblem ? .applicationDefined : .transient
-            popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
+            guard let (view, rect) = panelAnchor() else { return }
+            popover.show(relativeTo: rect, of: view, preferredEdge: .minY)
             clampPanel()
             watchPanelFrame()
             popover.contentViewController?.view.window?.makeKey()
@@ -274,18 +286,94 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               let win = popover.contentViewController?.view.window
         else { return }
 
-        let anchor = statusItem.button?.window?.frame.origin
-        guard let screen = PanelPlacement.screen(forAnchor: anchor,
-                                                 panel: win.frame,
-                                                 screens: NSScreen.screens)
+        let displays = PanelPlacement.displays()
+        guard let i = PanelPlacement.targetDisplay(anchor: statusItem.button?.window?.frame,
+                                                   pointer: NSEvent.mouseLocation,
+                                                   displays: displays)
         else { return }
 
-        let target = PanelPlacement.clamp(win.frame, into: screen.visibleFrame)
+        let target = PanelPlacement.clamp(win.frame,
+                                          into: displays[i].visible,
+                                          shadow: panelShadowInset(win))
         guard target.origin != win.frame.origin else { return }
 
         isClamping = true
         win.setFrame(target, display: true)
         isClamping = false
+    }
+
+    /// The transparent border NSPopover draws around the panel — 13pt a side on
+    /// this Mac. Asked for rather than assumed, because it is AppKit's number and
+    /// AppKit is free to change it. Treating it as part of the panel is what made
+    /// an earlier version shove a correctly placed panel 3pt down the screen every
+    /// time it opened.
+    private func panelShadowInset(_ win: NSWindow) -> CGFloat {
+        guard let content = popover.contentViewController?.view else { return 0 }
+        let onScreen = win.convertToScreen(content.convert(content.bounds, to: nil))
+        return max(0, onScreen.minX - win.frame.minX)
+    }
+
+    /// What the panel hangs from.
+    ///
+    /// Normally the menu-bar icon. But a menu-bar manager, or macOS running out
+    /// of room up there, hides an icon by parking its window off the left edge of
+    /// every screen — measured at x ≈ -10094 on this Mac, drifting a little
+    /// between runs — while still reporting it as visible. Hanging the panel off
+    /// that point makes AppKit drop the panel
+    /// against the left edge of the leftmost monitor, which is how it ends up on a
+    /// screen the person is not even looking at.
+    ///
+    /// So when the icon is not really anywhere, we pick the spot ourselves: under
+    /// the menu bar of the screen the pointer is on, where the panel would have
+    /// appeared if the icon had been visible.
+    private func panelAnchor() -> (NSView, NSRect)? {
+        let displays = PanelPlacement.displays()
+        let iconFrame = statusItem.button?.window?.frame
+
+        if PanelPlacement.isUsableAnchor(iconFrame, displays: displays),
+           let b = statusItem.button {
+            hideStandInAnchor()
+            return (b, b.bounds)
+        }
+
+        // No screens at all, or nothing to hang from: fall back to the icon
+        // rather than quietly declining to open. A panel that does not appear is
+        // the exact silent failure this app exists to correct.
+        let stand = standInAnchorWindow()
+        guard let i = PanelPlacement.targetDisplay(anchor: iconFrame,
+                                                   pointer: NSEvent.mouseLocation,
+                                                   displays: displays),
+              let cv = stand.contentView
+        else {
+            RepairLog.write(event: "panel_anchor_fallback",
+                            detail: ["reason": "no display to place the panel on"])
+            return statusItem.button.map { ($0, $0.bounds) }
+        }
+
+        stand.setFrame(PanelPlacement.fallbackAnchor(on: displays[i]), display: false)
+        stand.orderFront(nil)
+        return (cv, cv.bounds)
+    }
+
+    /// A one-point invisible window, used only as something for the panel to hang
+    /// from when the menu-bar icon is hidden. Too small and too high a layer to be
+    /// mistaken for a real window by anything, including this app's own scan.
+    private func standInAnchorWindow() -> NSWindow {
+        if let w = standInAnchor { return w }
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
+        w.backgroundColor = .clear
+        w.isOpaque = false
+        w.hasShadow = false
+        w.ignoresMouseEvents = true
+        w.level = .statusBar
+        w.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        standInAnchor = w
+        return w
+    }
+
+    private func hideStandInAnchor() {
+        standInAnchor?.orderOut(nil)
     }
 
     /// Re-clamps for as long as the panel is open, since it can be moved or
@@ -307,6 +395,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func stopWatchingPanelFrame() {
         frameObservers.forEach { NotificationCenter.default.removeObserver($0) }
         frameObservers.removeAll()
+        hideStandInAnchor()
     }
 
     /// `keepVerdict` is for the times we already know what to say — rechecking
@@ -314,10 +403,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// "all clear", which is how this panel first shipped saying the opposite of
     /// what it had just detected.
     private func showPanel(sticky: Bool = false, keepVerdict: Bool = false) {
-        guard let b = statusItem.button, !popover.isShown else { return }
+        guard statusItem.button != nil, !popover.isShown else { return }
         if !keepVerdict { model.recheck() }
         popover.behavior = sticky ? .applicationDefined : .transient
-        popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
+        guard let (view, rect) = panelAnchor() else { return }
+        popover.show(relativeTo: rect, of: view, preferredEdge: .minY)
         clampPanel()
         watchPanelFrame()
         if sticky {

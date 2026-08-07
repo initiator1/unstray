@@ -95,6 +95,20 @@ via `ATSApplicationFontsPath`. Motion respects `accessibilityDisplayShouldReduce
 `ScreenDiagram` draws live `NSScreen` frames to scale — the signature element.
 Stray shapes drift outside the bounding box when things are stranded.
 
+## Where the panel goes
+
+`PanelPlacement` owns this, as plain rectangles rather than `NSScreen`, so a
+three-monitor desk is testable with nothing plugged in. `run-tests.sh` compiles
+it — the tests used to hold a copy of the arithmetic, which meant deleting the
+real clamp left every test green.
+
+The order is: the menu-bar icon **if it is genuinely on a screen**, then the
+screen the pointer is on, then the primary. The panel's own position is never
+consulted — it is the thing that is wrong. When the icon is hidden, the panel
+hangs from a 1x1 invisible stand-in window placed under the menu bar of the
+target screen, so AppKit is never asked to rescue a popover anchored into the
+void. Then it is clamped, with the popover's 13pt shadow taken off first.
+
 ## Log
 
 `~/.unstray/events.jsonl`, one JSON object per line: `launched`, `found`,

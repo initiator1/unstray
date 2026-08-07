@@ -63,9 +63,14 @@ final class EmptyAppWatch {
     }
 
     /// True when this app has nothing on screen worth looking at.
-    private func showsNothing(pid: pid_t) -> Bool {
+    ///
+    /// Counts every process in the app's family, not just the one that came
+    /// forward. Electron and Steam-style apps keep the real window in a helper
+    /// with a different pid, and asking only about the main process reports an
+    /// app as empty while its window is sitting right there.
+    private func showsNothing(_ app: NSRunningApplication) -> Bool {
         let screens = NSScreen.screens.map { $0.frame }
-        let windows = Usability.realWindows(pid: pid)
+        let windows = Usability.relatedPIDs(of: app).flatMap { Usability.realWindows(pid: $0) }
         return !windows.contains { w in screens.contains { $0.intersects(w) } }
     }
 
@@ -109,15 +114,62 @@ final class EmptyAppWatch {
             watchForRecovery(app, name: name)
 
         case .nothingToShow:
-            // Ask for a window the way the Dock is supposed to, then fall back to
-            // asking for a blank document, which works on apps that swallow the
-            // reopen event.
-            var asked = AppReopen.ask(app)
-            if showsNothing(pid: app.processIdentifier) {
-                asked = AppReopen.askForNewDocument(app) || asked
+            // The same caution as a frozen app, for the same reason: an app that
+            // is launching or relaunching has no window yet, and at any single
+            // instant that is identical to the bug. How patient to be, and
+            // why, is in EmptyAppPatience.
+            watchForWindow(app, name: name)
+        }
+    }
+
+    /// Watches an app that came forward with nothing to show, and speaks only
+    /// once every ordinary explanation has been ruled out. `EmptyAppPatience`
+    /// makes the decision on each look; this only carries it out.
+    private func watchForWindow(_ app: NSRunningApplication, name: String,
+                                looksSoFar: Int = 0, askedAt: Date? = nil) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + EmptyAppPatience.lookAgainEvery) { [weak self] in
+            guard let self else { return }
+
+            let decision = EmptyAppPatience.step(
+                terminated: app.isTerminated,
+                showsSomethingNow: !self.showsNothing(app),
+                personMovedOn: NSWorkspace.shared.frontmostApplication?.processIdentifier
+                    != app.processIdentifier,
+                stillStartingUp: Usability.isStillStartingUp(app),
+                alreadyAsked: askedAt != nil,
+                secondsSinceAsking: askedAt.map { Date().timeIntervalSince($0) } ?? 0,
+                looksSoFar: looksSoFar
+            )
+
+            switch decision {
+            case .goQuiet:
+                RepairLog.write(event: app.isTerminated ? "app_unusable_moot"
+                                                        : "app_unusable_fixed",
+                                detail: ["problem": "nothingToShow",
+                                         "looks": looksSoFar])
+
+            case .keepWaiting:
+                self.watchForWindow(app, name: name,
+                                    looksSoFar: looksSoFar + 1, askedAt: askedAt)
+
+            case .askForAWindow:
+                // Ask the way the Dock is supposed to, then fall back to asking
+                // for a blank document, which works on apps that swallow the
+                // reopen event.
+                var asked = AppReopen.ask(app)
+                if self.showsNothing(app) {
+                    asked = AppReopen.askForNewDocument(app) || asked
+                }
+                _ = asked
+                self.watchForWindow(app, name: name,
+                                    looksSoFar: looksSoFar + 1, askedAt: Date())
+
+            case .speak:
+                RepairLog.write(event: "app_unusable_unfixed",
+                                detail: ["problem": "nothingToShow",
+                                         "looks": looksSoFar])
+                self.onUnfixable?(name, .nothingToShow)
             }
-            _ = asked
-            confirm(app, name: name, problem: problem)
         }
     }
 
@@ -159,6 +211,17 @@ final class EmptyAppWatch {
                          problem: Usability.Problem) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self else { return }
+
+            // The same two ordinary explanations as everywhere else: it quit, or
+            // it is still coming up. Neither is a thing to tell someone about,
+            // and a dead process answers every question wrongly.
+            guard !app.isTerminated, !Usability.isStillStartingUp(app) else {
+                RepairLog.write(event: "app_unusable_moot",
+                                detail: ["problem": self.label(problem),
+                                         "reason": app.isTerminated ? "quit" : "still opening"])
+                return
+            }
+
             if Usability.problem(for: app) != nil {
                 RepairLog.write(event: "app_unusable_unfixed",
                                 detail: ["problem": self.label(problem)])

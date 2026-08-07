@@ -43,6 +43,7 @@ swiftc -O \
   unstray/Core/ActivityWatch.swift \
   unstray/Core/PanelPlacement.swift \
   unstray/Core/Usability.swift \
+  unstray/Core/EmptyAppPatience.swift \
   unstray/Core/EmptyAppWatch.swift \
   unstray/UI/Design.swift \
   unstray/UI/ScreenDiagram.swift \

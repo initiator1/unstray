@@ -98,6 +98,22 @@ All three silently flip during macOS updates. That is the recurring job.
   find the frame via CGWindowList, then `screencapture -D 1` + `sips -c`.
 - **Menu-bar helpers have `activationPolicy != .regular`.** Filter them or the
   scan reports false positives — an early version flagged eight non-problems.
+- **A hidden menu-bar icon is parked off every screen, and still says it is
+  visible.** Bartender (and macOS's own overflow) move a hidden `NSStatusItem`'s
+  window to x ≈ -10094 while `statusItem.isVisible` stays `true`. Read too early
+  the same frame is `(0, 0, 28, 0)` — zero height, corner inside the primary
+  screen, so `contains()` says yes. Never hang a popover off that window and
+  never pick a screen from it without `PanelPlacement.isUsableAnchor`. This was
+  the third and real cause of the panel appearing in the wrong place.
+- **An NSPopover window is 13pt bigger than its panel on every side** (406x656
+  around 380x630). Clamp the panel, not the window, or a correctly placed panel
+  gets nudged on every open.
+- **An app that is opening is indistinguishable from a broken one.** No window,
+  not answering, no menu bar — that is a launch, a relaunch, and an in-app
+  updater's "Restart to Update", as much as it is the bug. Only elapsed time
+  tells them apart, so every path that accuses an app must consult
+  `Usability.isStillStartingUp` and `app.isTerminated` first. This has now been
+  got wrong twice, on two different branches of the same switch.
 
 ## House rules that bite here
 
