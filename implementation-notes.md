@@ -169,3 +169,45 @@ changed.
   reconstructed from the shipped constants (0.7s settle + 1.0s confirm = 1.7s)
   against the reported ~2.7s, and the decision is now covered by tests that fail
   when the old behaviour is restored.
+
+---
+
+# Windows left hanging off a screen edge
+
+2026-08-13. A measured Epson Scan 2 window kept only 40pt of its 434pt width on
+screen. Both old checks accepted that sliver as usable.
+
+## Deviations
+
+- The brief says `WindowScan.findStranded()` already used the same 120pt height
+  floor as `Usability.realWindows()`. The live scan used 150pt. The refactored
+  scan keeps its required 150pt filter. Shared reachability uses the requested
+  200pt width and 120pt height floors from `ScreenSpace`.
+
+## Found during review
+
+- **The first version reported windows on other Spaces.** A live run flagged
+  three apps; the repair moved two and could not touch the third, because AX
+  reaches only the current Space. That leaves a "Slide it back" button that does
+  nothing however often it is pressed. `kCGWindowIsOnscreen` now gates the edge
+  case. It reads as "on the current screenful", not "visible": a window with
+  40pt of 509 left on screen reported `true`, a window in the middle of the
+  screen one Space over reported `false`.
+- **The plural read wrong.** "Only a sliver of them is still on your screen"
+  describes one shared sliver and does not agree with its own verb. Each window
+  has its own, so the plural is "a sliver of each".
+- **The finding rebuilt itself from a second scan.** `checkOffTheEdge()` called
+  `windowOffTheEdge()`, which walked the whole window list again and could come
+  back with a different answer than the one the finding was written from. The
+  activation check also accepts a shorter window than this scan does, so the
+  button could be handed an empty list. It now falls back to the same question
+  that raised the finding, the way `titleBarOutOfReach` already did.
+
+## Verified live, 2026-08-13
+
+Reproduced the measured geometry with a throwaway window at (1880, 200, 509,
+700) on a 1920x1080 screen. `checkOffTheEdge()` reported it, the button moved it
+to x=1411 — flush with the right edge, y untouched — and the rescan came back
+clean. Two genuinely lost windows turned up in the same run that nothing had
+been watching: App Store with 48pt of 1168 left, Standard Notes with 157pt of
+1160.

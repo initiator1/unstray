@@ -69,9 +69,11 @@ final class EmptyAppWatch {
     /// with a different pid, and asking only about the main process reports an
     /// app as empty while its window is sitting right there.
     private func showsNothing(_ app: NSRunningApplication) -> Bool {
-        let screens = NSScreen.screens.map { $0.frame }
+        let screens = ScreenSpace.screens()
         let windows = Usability.relatedPIDs(of: app).flatMap { Usability.realWindows(pid: $0) }
-        return !windows.contains { w in screens.contains { $0.intersects(w) } }
+        return !windows.contains {
+            !ScreenSpace.visiblePart(of: $0, screens: screens).isNull
+        }
     }
 
     private func checkAndRepair(_ app: NSRunningApplication) {
@@ -97,6 +99,12 @@ final class EmptyAppWatch {
         case .titleBarOutOfReach(let win, let frame):
             // Visible but unmovable. Nudge it down just far enough to grab.
             Usability.bringTitleBarIntoReach(win, frame: frame)
+            confirm(app, name: name, problem: problem)
+
+        case .pushedOffTheEdge(let win, let frame):
+            // Selecting the app is already a request to use this window. Restore
+            // the whole shape and speak only when the quiet repair does not land.
+            Usability.slideFullyIntoView(win, frame: frame)
             confirm(app, name: name, problem: problem)
 
         case .notResponding:
@@ -239,6 +247,7 @@ final class EmptyAppWatch {
         case .hidden:              return "hidden"
         case .notResponding:       return "notResponding"
         case .titleBarOutOfReach:  return "titleBarOutOfReach"
+        case .pushedOffTheEdge:     return "pushedOffTheEdge"
         case .nothingToShow:       return "nothingToShow"
         }
     }

@@ -117,13 +117,16 @@ enum WindowRescue {
 
     // MARK: - The two things this can do
 
-    /// Pulls specific stranded things back onto the screen you are using.
+    /// Pulls specific unreachable things back onto the screen you are using.
     @discardableResult
-    static func rescue(_ stranded: [WindowScan.Stranded]) -> Bool {
+    static func rescue(_ items: [WindowScan.OutOfReach]) -> Bool {
         guard hasPermission else { return false }
+        let screens = ScreenSpace.screens()
+        let usableScreens = ScreenSpace.usableScreens()
+        guard !screens.isEmpty, !usableScreens.isEmpty else { return false }
         var movedAny = false
 
-        for item in stranded {
+        for item in items {
             // The app has to be frontmost for its things to become visible to
             // the accessibility layer at all.
             bringToFront(pid: item.pid)
@@ -132,9 +135,20 @@ enum WindowRescue {
             for win in axWindows(item.pid) {
                 if isMinimized(win) { unminimize(win) }
                 guard let f = frame(of: win) else { continue }
-                let screens = NSScreen.screens.map { $0.frame }
-                guard !screens.contains(where: { $0.intersects(f) }) else { continue }
-                if move(win, to: placeInside(f.size, screen: item.rescueTarget)) {
+                let visible = ScreenSpace.visiblePart(of: f, screens: screens)
+                let destination: CGPoint
+                switch item.reason {
+                case .strandedOffEveryScreen:
+                    guard visible.isNull else { continue }
+                    destination = placeInside(f.size, screen: item.rescueTarget)
+                case .pushedPastTheEdge:
+                    guard !visible.isNull,
+                          !ScreenSpace.isReachable(f, screens: screens)
+                    else { continue }
+                    destination = ScreenSpace.slideIntoView(
+                        f, screens: usableScreens, preferred: item.rescueTarget)
+                }
+                if move(win, to: destination) {
                     movedAny = true
                 }
             }
@@ -178,8 +192,10 @@ enum WindowRescue {
         bringToFront(pid: pid)
         usleep(120_000)
 
-        let target = WindowScan.screenUnderCursor().visibleFrame
-        let screens = NSScreen.screens.map { $0.frame }
+        let target = WindowScan.screenUnderCursor()
+        let screens = ScreenSpace.screens()
+        let usableScreens = ScreenSpace.usableScreens()
+        guard !target.isNull, !screens.isEmpty, !usableScreens.isEmpty else { return false }
         var didSomething = false
 
         for win in axWindows(pid) {
@@ -188,10 +204,16 @@ enum WindowRescue {
                 didSomething = true
             }
             guard let f = frame(of: win) else { continue }
-            // Only move what is actually unreachable. Dragging things a person
-            // deliberately placed would be its own kind of broken.
-            if !screens.contains(where: { $0.intersects(f) }) {
+            // A useful window keeps the position the person chose. A lost one
+            // returns to the current screen, while a visible sliver moves only
+            // far enough to restore the whole window.
+            let visible = ScreenSpace.visiblePart(of: f, screens: screens)
+            if visible.isNull {
                 if move(win, to: placeInside(f.size, screen: target)) { didSomething = true }
+            } else if !ScreenSpace.isReachable(f, screens: screens) {
+                let destination = ScreenSpace.slideIntoView(
+                    f, screens: usableScreens, preferred: target)
+                if move(win, to: destination) { didSomething = true }
             }
         }
         return didSomething

@@ -9,6 +9,8 @@ First public version.
 - Fixes them on request, saying up front when a fix needs you to log out.
 - Finds windows parked where no screen can reach — usually after a monitor is
   unplugged — and brings them back to the screen you are using.
+- Finds windows with only an unusable sliver left on a screen, and slides them
+  fully back into view.
 - A rescue key (⌥⌘R, or ⌥⇧⌘R / ⌥⇧⌘W if something else already uses it) that
   gathers whatever app you are fighting with onto your screen.
 - Checks again by itself after a macOS update, since a major upgrade or a

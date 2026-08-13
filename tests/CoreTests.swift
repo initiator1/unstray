@@ -23,14 +23,13 @@ func check(_ name: String, _ condition: Bool, _ detail: String = "") {
     }
 }
 
-// MARK: - Is a window reachable?
+// MARK: - Does a window touch any screen?
 //
-// The single most important question the app asks. If this is wrong, it either
-// misses windows that are genuinely lost or drags back ones you deliberately
-// placed.
+// This separates windows stranded past every screen from windows that still
+// touch one. ScreenSpace makes the stronger usability decision below.
 
 func unreachable(_ r: CGRect, _ screens: [CGRect]) -> Bool {
-    !screens.contains { $0.intersects(r) }
+    ScreenSpace.visiblePart(of: r, screens: screens).isNull
 }
 
 func testReachability() {
@@ -225,6 +224,59 @@ func testUsabilityVsExistence() {
     check("a 26pt strip does intersect the screen, which is why size must be checked",
           one.contains { $0.intersects(leftover) },
           "geometry alone would call this healthy")
+}
+
+// MARK: - Is enough of the window left to use?
+//
+// These tests call the shipped ScreenSpace code. The measured Epson rectangle
+// is the regression case: its 40pt corner exists, but a person cannot use it.
+
+func testScreenSpace() {
+    print("\nscreen coordinates and usable window area")
+    let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+    let one = [screen]
+
+    let source = CGRect(x: -300, y: 1400, width: 434, height: 700)
+    check("flipping a rectangle twice restores it",
+          ScreenSpace.flip(ScreenSpace.flip(source, primaryTop: 1080),
+                           primaryTop: 1080) == source)
+
+    let epson = CGRect(x: 1880, y: 363, width: 434, height: 700)
+    let epsonVisible = ScreenSpace.visiblePart(of: epson, screens: one)
+    check("the measured Epson sliver is 40pt wide and unusable",
+          epsonVisible.width == 40 && !ScreenSpace.isReachable(epson, screens: one))
+
+    let halfOff = CGRect(x: 1703, y: 300, width: 434, height: 700)
+    check("217pt left on screen remains reachable",
+          ScreenSpace.visiblePart(of: halfOff, screens: one).width == 217
+            && ScreenSpace.isReachable(halfOff, screens: one))
+
+    let fullyOn = CGRect(x: 200, y: 200, width: 800, height: 600)
+    check("a window fully on screen remains reachable",
+          ScreenSpace.isReachable(fullyOn, screens: one))
+
+    let nowhere = CGRect(x: 3000, y: 300, width: 434, height: 700)
+    check("a window touching no screen has no visible part",
+          ScreenSpace.visiblePart(of: nowhere, screens: one).isNull
+            && !ScreenSpace.isReachable(nowhere, screens: one))
+
+    let sideBySide = [screen, CGRect(x: 1920, y: 0, width: 1920, height: 1080)]
+    let spanning = CGRect(x: 1800, y: 300, width: 434, height: 700)
+    check("a window spanning two screens stays reachable",
+          ScreenSpace.visiblePart(of: spanning, screens: sideBySide).width == 434
+            && ScreenSpace.isReachable(spanning, screens: sideBySide))
+
+    let slidOrigin = ScreenSpace.slideIntoView(epson, screens: one, preferred: screen)
+    let slid = CGRect(origin: slidOrigin, size: epson.size)
+    check("the Epson window slides fully inside and keeps its y position",
+          slid.minX >= screen.minX && slid.maxX <= screen.maxX
+            && slid.minY >= screen.minY && slid.maxY <= screen.maxY
+            && slidOrigin.y == epson.minY)
+
+    let tooTall = CGRect(x: 200, y: 300, width: 800, height: 1400)
+    let pinned = ScreenSpace.slideIntoView(tooTall, screens: one, preferred: screen)
+    check("a window taller than its screen pins to the top",
+          pinned.x == tooTall.minX && pinned.y == screen.minY)
 }
 
 // MARK: - Where the panel is allowed to sit
@@ -586,6 +638,7 @@ testHeadlines()
 testDiagram()
 testTitleBarReach()
 testUsabilityVsExistence()
+testScreenSpace()
 testAnchorIsChecked()
 testTargetDisplay()
 testPanelIsAlwaysOnItsScreen()

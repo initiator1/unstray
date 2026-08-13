@@ -31,8 +31,8 @@ a window, and it tells you about exactly none of them.
 right now. If nothing is, it says so in a sentence. If something is, it shows you
 the one thing that matters most, with one button.
 
-**It finds windows you can't see** — parked off the edge of every screen, usually
-after a monitor gets unplugged — and brings them back to the screen you're using.
+**It finds windows you cannot use** — parked past every screen or left hanging
+off one edge — and brings them back to the screen you are using.
 
 **It notices when you click an app and nothing comes up**, and asks the app to
 show you something. Usually you never find out there was a problem.
@@ -155,7 +155,7 @@ forgotten.
 
 ```bash
 git clone https://github.com/initiator1/unstray && cd unstray
-./run-tests.sh          # 40 core logic tests, about a second
+./run-tests.sh          # 82 core logic tests, about a second
 ./build.sh              # -> build/unstray.app
 ```
 

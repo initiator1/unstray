@@ -477,12 +477,17 @@ final class VerdictModel: ObservableObject {
         if permitted, let stranded = WindowScan.check() {
             findings.append(stranded)
         }
+        if permitted, let offEdge = WindowScan.checkOffTheEdge() {
+            findings.append(offEdge)
+        }
 
         // Note that an update happened, so the panel can mention the timing.
         // Timing only — we cannot know the update caused anything, and claiming
         // it did would be making something up.
         if followsOSUpdate, !findings.isEmpty {
-            for i in findings.indices where findings[i].kind != .strandedWindows {
+            for i in findings.indices
+            where findings[i].kind != .strandedWindows
+                && findings[i].kind != .windowOffTheEdge {
                 findings[i].followsOSUpdate = true
             }
         }

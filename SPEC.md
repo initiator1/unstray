@@ -59,8 +59,8 @@ something is, it shows exactly one problem — the worst one — with one button
 **Watches three settings** that decide whether macOS can lose your things, and
 notices when a macOS update changes them behind your back.
 
-**Finds things parked where no screen can reach** and brings them back to the
-screen you are looking at.
+**Finds things parked where no screen can reach, or left hanging off an edge,**
+and brings them back to the screen you are looking at.
 
 **A rescue key (⌥⌘R)** that gathers whatever app you are trying to reach onto
 the screen you are using — unminimizing, unhiding, and dragging back anything

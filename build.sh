@@ -36,6 +36,7 @@ swiftc -O \
   unstray/Core/LegacyActivation.c \
   unstray/Core/Finding.swift \
   unstray/Core/SettingsCheck.swift \
+  unstray/Core/ScreenSpace.swift \
   unstray/Core/WindowScan.swift \
   unstray/Core/WindowRescue.swift \
   unstray/Core/RepairLog.swift \

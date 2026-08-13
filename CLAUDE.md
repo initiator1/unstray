@@ -16,7 +16,7 @@ open build/unstray.app
 ```
 
 ```bash
-./run-tests.sh              # 40 core logic tests, ~1 second
+./run-tests.sh              # 82 core logic tests, ~1 second
 ./build.sh --notarize       # release build; needs the `unstray` keychain profile
 ```
 
@@ -40,7 +40,8 @@ gated.
 unstray/Core/
   Finding.swift          Finding + Verdict. Every user-facing string lives here.
   SettingsCheck.swift    The three load-bearing macOS settings.
-  WindowScan.swift       Finds windows no screen can reach.
+  ScreenSpace.swift      Converts screen geometry and decides usable window area.
+  WindowScan.swift       Finds windows beyond or mostly past a screen edge.
   WindowRescue.swift     Moves them back. AX + the Carbon shim.
   LegacyActivation.{h,c} C shim for SetFrontProcessWithOptions.
   RepairLog.swift        JSONL to ~/.unstray/events.jsonl (local only).
@@ -88,6 +89,21 @@ All three silently flip during macOS updates. That is the recurring job.
   since 10.15 (Apple's FB11974786).
 - **AX sees only the current Space; CGWindowList sees all Spaces but cannot
   move anything.** Any real work needs both, correlated.
+- **Window and screen rectangles use opposite vertical coordinates.**
+  CGWindowList and AX measure down from the primary top-left. NSScreen measures
+  up from the primary bottom-left. Every comparison must go through
+  `ScreenSpace`. Touching a screen does not make a window usable. A real Epson
+  settings window left only 40pt of its 434pt width on screen, which was too
+  small to read or click and still passed the old check.
+- **Never report a window you cannot move.** Because AX reaches only the current
+  Space, an edge-pushed window one screenful over is untouchable, and offering
+  "Slide it back" for it puts a button on screen that does nothing forever —
+  the exact failure this app exists to remove. `kCGWindowIsOnscreen` is the test
+  that separates them, and it means "on the current screenful", not "visible":
+  measured, a window with 40pt of 509 left on screen reports `true`, while a
+  window sitting squarely in the middle of the screen but one Space over reports
+  `false`. Applied to the edge case only — the stranded scan predates it and is
+  deliberately left alone.
 - **There is no public API to move a window to another Space.** yabai's
   scripting addition needs SIP off plus an NVRAM boot-arg on Tahoe/arm64;
   `hs.spaces.moveWindowToSpace` has been broken upstream since Sonoma 14.5.

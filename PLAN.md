@@ -10,7 +10,7 @@ permission arrives.
 AppDelegate ──owns──> VerdictModel ──produces──> Verdict ──renders──> VerdictView
      │                     │                                              │
      │                     ├── SettingsCheck.runAll()  ──> [Finding]      ├─ AllWellPanel
-     │                     ├── WindowScan.check()      ──> Finding?       ├─ ProblemPanel
+     │                     ├── WindowScan.check*()     ──> Finding?       ├─ ProblemPanel
      │                     └── WindowRescue            ──> repairs        └─ PermissionPanel
      │
      ├── NSStatusItem + NSPopover
@@ -26,7 +26,7 @@ AppDelegate ──owns──> VerdictModel ──produces──> Verdict ──r
 
 | Field | Purpose |
 |---|---|
-| `kind` | `blackDisplays` / `appsWontComeForward` / `hiddenMinimized` / `strandedWindows` |
+| `kind` | `blackDisplays` / `appsWontComeForward` / `hiddenMinimized` / `strandedWindows` / `windowOffTheEdge` |
 | `severity` | `nowBroken` < `willBiteLater` — sorts which single problem is shown |
 | `headline` | The symptom, in their words |
 | `explanation` | Why, in short lines |
@@ -56,6 +56,9 @@ failure the app exists to correct.
 
 So: scan with CGWindowList to find what is unreachable, then bring the owning
 app frontmost (which makes its windows visible to AX), then move them with AX.
+
+`ScreenSpace` converts every `NSScreen` rectangle before that comparison. It
+also separates a useful partial window from a sliver that is too small to use.
 
 Filter `activationPolicy != .regular` or menu-bar helpers register as problems.
 

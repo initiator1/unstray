@@ -22,6 +22,7 @@ enum WindowScan {
         case .hidden,
              .nothingToShow:  return appShowsNothing(appName: appName)
         case .titleBarOutOfReach: return titleBarOutOfReach(appName: appName)
+        case .pushedOffTheEdge: return windowOffTheEdge(appName: appName)
         }
     }
 
@@ -107,11 +108,17 @@ enum WindowScan {
         )
     }
 
-    struct Stranded {
+    struct OutOfReach {
+        enum Reason: Equatable {
+            case strandedOffEveryScreen
+            case pushedPastTheEdge
+        }
+
         let appName: String
         let pid: pid_t
         let frame: CGRect
-        /// Where it should go: the screen the mouse is on.
+        let reason: Reason
+        /// Where it should go: the screen the mouse is on, in window coordinates.
         var rescueTarget: CGRect
     }
 
@@ -122,30 +129,24 @@ enum WindowScan {
         app.activationPolicy != .regular
     }
 
-    /// True when this app has at least one window you can actually see.
-    private static func hasVisibleWindow(pid: pid_t, screens: [CGRect]) -> Bool {
-        Usability.realWindows(pid: pid).contains { w in
-            screens.contains { $0.intersects(w) }
-        }
-    }
-
-    /// True when this rectangle touches none of the screens you actually have.
-    private static func isUnreachable(_ r: CGRect, screens: [CGRect]) -> Bool {
-        !screens.contains { $0.intersects(r) }
-    }
-
     /// The screen the mouse is on — where a person is currently looking, and so
     /// the only sensible place to put something back.
-    static func screenUnderCursor() -> NSScreen {
+    static func screenUnderCursor() -> CGRect {
+        let screens = NSScreen.screens
+        guard let primary = screens.first else { return .null }
         let mouse = NSEvent.mouseLocation
-        return NSScreen.screens.first { $0.frame.contains(mouse) }
+        let target = screens.first { $0.frame.contains(mouse) }
             ?? NSScreen.main
-            ?? NSScreen.screens[0]
+            ?? primary
+        return ScreenSpace.flip(target.visibleFrame,
+                                primaryTop: primary.frame.maxY)
     }
 
-    /// Everything open right now that no screen can reach.
-    static func findStranded() -> [Stranded] {
-        let screens = NSScreen.screens.map { $0.frame }
+    /// Every real window that is lost or leaves too little on screen to use.
+    /// One window-server list supplies both answers, so their filters cannot
+    /// drift into separate systems.
+    static func findOutOfReach() -> [OutOfReach] {
+        let screens = ScreenSpace.screens()
         guard !screens.isEmpty,
               let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID)
                   as? [[String: Any]]
@@ -157,8 +158,10 @@ enum WindowScan {
             appsByPid[a.processIdentifier] = a
         }
 
-        let target = screenUnderCursor().visibleFrame
-        var out: [Stranded] = []
+        let target = screenUnderCursor()
+        var classified: [(appName: String, pid: pid_t, frame: CGRect,
+                          reason: OutOfReach.Reason?)] = []
+        var pidsWithVisibleWindows: Set<pid_t> = []
 
         for w in list {
             guard let layer = w[kCGWindowLayer as String] as? Int, layer == 0,
@@ -170,32 +173,68 @@ enum WindowScan {
 
             // Toolbars, shadows, and tiny helper surfaces are not "things you
             // were working in". Real windows are bigger than this.
-            guard width >= 200, height >= 150 else { continue }
+            guard width >= ScreenSpace.smallestRealWindowWidth,
+                  height >= ScreenSpace.smallestRealWindowHeight
+            else { continue }
 
             guard let app = appsByPid[pidNum], !isBackgroundHelper(app) else { continue }
 
             let frame = CGRect(x: x, y: y, width: width, height: height)
-            guard isUnreachable(frame, screens: screens) else { continue }
+            let visible = ScreenSpace.visiblePart(of: frame, screens: screens)
+            if !visible.isNull { pidsWithVisibleWindows.insert(pidNum) }
 
-            // Skip apps that also have a window you can see. Telling someone
-            // "you cannot see it" about an app in front of them is worse than
-            // saying nothing: a stray second window is not a lost app, and this
-            // once reported the very app the person was reading it in.
-            guard !hasVisibleWindow(pid: pidNum, screens: screens) else { continue }
+            // The broad usability check accepts a shorter document window. The
+            // all-Spaces scan keeps its stricter historical filter to avoid the
+            // helper panels that produced early false alarms.
+            guard height >= 150 else { continue }
 
-            out.append(Stranded(
-                appName: app.localizedName ?? "Something",
-                pid: pidNum,
-                frame: frame,
-                rescueTarget: target
-            ))
+            // Whether this window belongs to the screenful the person is looking
+            // at right now. Measured: a window shoved off the right edge of the
+            // current screenful still reports true; every window belonging to
+            // another screenful reports false, even one sitting squarely in the
+            // middle of the screen.
+            let onThisScreenful = (w[kCGWindowIsOnscreen as String] as? Bool) ?? false
+
+            let reason: OutOfReach.Reason?
+            if visible.isNull {
+                reason = .strandedOffEveryScreen
+            } else if !ScreenSpace.isReachable(frame, screens: screens),
+                      onThisScreenful {
+                // Only ever report an edge-pushed window we can actually move.
+                //
+                // The accessibility layer reaches only the current screenful,
+                // and there is no public way to move a window between them. A
+                // window one screenful over is not hurting anyone right now —
+                // nobody is looking at it — and reporting it would put a "Slide
+                // it back" button on screen that does nothing, forever. That is
+                // the exact failure this app exists to remove. When the person
+                // moves to that screenful, this scan sees it and can fix it.
+                reason = .pushedPastTheEdge
+            } else {
+                reason = nil
+            }
+            classified.append((app.localizedName ?? "Something", pidNum, frame,
+                               reason))
         }
-        return out
+
+        // A fully stranded second window does not make a visible app look lost.
+        // An off-edge window remains broken even when the same app has another
+        // useful window, which is the measured Epson case.
+        return classified.compactMap { item in
+            guard let reason = item.reason else { return nil }
+            if reason == .strandedOffEveryScreen,
+               pidsWithVisibleWindows.contains(item.pid) { return nil }
+            return OutOfReach(appName: item.appName, pid: item.pid,
+                              frame: item.frame, reason: reason,
+                              rescueTarget: target)
+        }
     }
 
     /// Builds the "things are parked off the edge" finding, if there are any.
     static func check() -> Finding? {
-        let stranded = findStranded()
+        let stranded = findOutOfReach().filter {
+            $0.reason == .strandedOffEveryScreen
+        }
         guard !stranded.isEmpty else { return nil }
 
         // Name the actual apps. "Your Notes and your Chrome" beats "3 windows"
@@ -234,6 +273,88 @@ enum WindowScan {
             }.joined(separator: ", "),
             repair: {
                 WindowRescue.rescue(stranded)
+            }
+        )
+    }
+
+    /// Builds the shared single-app explanation used by the general scan and
+    /// the quiet app-activation repair when it cannot complete the move.
+    static func windowOffTheEdge(appName: String) -> Finding {
+        offEdgeFinding(names: [appName], items: findOutOfReach().filter {
+            $0.reason == .pushedPastTheEdge && $0.appName == appName
+        })
+    }
+
+    /// Reports windows whose remaining on-screen piece is too small to use.
+    static func checkOffTheEdge() -> Finding? {
+        let items = findOutOfReach().filter { $0.reason == .pushedPastTheEdge }
+        guard !items.isEmpty else { return nil }
+        // Built here rather than handed to `windowOffTheEdge`, which would walk
+        // the whole window list a second time and could come back with a
+        // different answer than the one this finding was written from.
+        return offEdgeFinding(names: Array(Set(items.map { $0.appName })).sorted(),
+                              items: items)
+    }
+
+    /// Keeps every off-edge finding on the same words and the same repair path.
+    private static func offEdgeFinding(names: [String],
+                                       items: [OutOfReach]) -> Finding {
+        let headline: String
+        switch names.count {
+        case 1:
+            headline = "One of \(names[0])'s windows is hanging off the edge of your screen."
+        case 2:
+            headline = "\(names[0]) and \(names[1]) each have a window hanging off the edge of your screen."
+        default:
+            let n = names.count - 2
+            headline = "\(names[0]), \(names[1]), and \(n) other app\(n == 1 ? "" : "s") each have a window hanging off the edge of your screen."
+        }
+
+        // Each window has its own sliver, so the plural is "each", not "them".
+        // "Only a sliver of them is still on your screen" reads as one shared
+        // sliver, and does not agree with its own verb.
+        let one = names.count == 1
+        let sliverOf = one ? "it" : "each"
+        let them = one ? "it" : "them"
+        let screens = ScreenSpace.screens()
+        return Finding(
+            id: "window-off-the-edge",
+            kind: .windowOffTheEdge,
+            severity: .nowBroken,
+            headline: headline,
+            explanation: """
+            Nothing is lost. Only a sliver of \(sliverOf) is still on your screen, so there is almost nothing left to read and almost nothing left to click.
+
+            This happens when a screen is unplugged, or when your Mac puts a window back where it used to be instead of where you are looking.
+
+            I can slide \(them) back until you can see all of \(them).
+            """,
+            actionLabel: names.count == 1 ? "Slide it back" : "Slide them back",
+            costWarning: nil,
+            technicalNote: "Off-edge windows: " + items.map { item in
+                let visible = ScreenSpace.visiblePart(of: item.frame, screens: screens)
+                return "\(item.appName)@(\(Int(item.frame.minX)),\(Int(item.frame.minY))) "
+                    + "\(Int(item.frame.width))x\(Int(item.frame.height)) visible "
+                    + "\(Int(visible.width))x\(Int(visible.height))"
+            }.joined(separator: ", "),
+            repair: {
+                if !items.isEmpty, WindowRescue.rescue(items) { return true }
+
+                // The check that runs when a person selects an app accepts a
+                // shorter window than this all-Spaces scan does, so it can raise
+                // this finding about a window the scan will not hand back. The
+                // button must still do what it says, so ask the same question
+                // that raised the finding and move whatever it points at.
+                var moved = false
+                for name in names {
+                    guard let app = NSWorkspace.shared.runningApplications.first(where: {
+                              $0.localizedName == name
+                          }),
+                          case .pushedOffTheEdge(let w, let f)? = Usability.problem(for: app)
+                    else { continue }
+                    if Usability.slideFullyIntoView(w, frame: f) { moved = true }
+                }
+                return moved
             }
         )
     }

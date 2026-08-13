@@ -24,13 +24,15 @@ enum Usability {
         case notResponding
         /// A window is on screen but its title bar is not, so it cannot be moved.
         case titleBarOutOfReach(window: AXUIElement, frame: CGRect)
+        /// A window leaves too little on screen to read or click.
+        case pushedOffTheEdge(window: AXUIElement, frame: CGRect)
         /// No window worth looking at exists at all.
         case nothingToShow
     }
 
     /// Anything shorter than this is a toolbar or a shadow, not something you
     /// were trying to look at. CotEditor's leftovers were 26pt tall.
-    static let smallestRealWindow: CGFloat = 120
+    static let smallestRealWindow = ScreenSpace.smallestRealWindowHeight
 
     /// How tall the grabbable strip at the top of a window is. If none of this is
     /// on a screen, the window cannot be dragged anywhere.
@@ -54,26 +56,45 @@ enum Usability {
             return .notResponding
         }
 
-        let screens = NSScreen.screens.map { $0.frame }
+        let screens = ScreenSpace.screens()
 
         // Count windows across every process in this app family, so a helper's
         // window rescues the app it belongs to.
-        let windows = relatedPIDs(of: app).flatMap { realWindows(pid: $0) }
+        let windows = relatedPIDs(of: app).flatMap { relatedPID in
+            realWindows(pid: relatedPID).map { (pid: relatedPID, frame: $0) }
+        }
 
         // Nothing at all to look at.
         guard !windows.isEmpty else { return .nothingToShow }
 
         // Everything is off every screen — the stranded case, handled elsewhere
         // by WindowScan, so not reported again here.
-        let onAnyScreen = windows.filter { w in screens.contains { $0.intersects(w) } }
+        let onAnyScreen = windows.filter { item in
+            !ScreenSpace.visiblePart(of: item.frame, screens: screens).isNull
+        }
         guard !onAnyScreen.isEmpty else { return .nothingToShow }
+
+        // A corner can remain visible while the useful part is gone. This wins
+        // over the title-bar question because restoring the whole window fixes
+        // both problems with one smaller, clearer repair.
+        if !onAnyScreen.contains(where: {
+            ScreenSpace.isReachable($0.frame, screens: screens)
+        }) {
+            for stuck in onAnyScreen {
+                if let axWin = matchingAXWindow(pid: stuck.pid, frame: stuck.frame) {
+                    return .pushedOffTheEdge(window: axWin, frame: stuck.frame)
+                }
+            }
+        }
 
         // A window you can see but cannot grab. Only worth reporting when NONE
         // of the visible windows is fully usable.
-        let grabbable = onAnyScreen.filter { hasReachableTitleBar($0, screens: screens) }
+        let grabbable = onAnyScreen.filter {
+            hasReachableTitleBar($0.frame, screens: screens)
+        }
         if grabbable.isEmpty, let stuck = onAnyScreen.first {
-            if let axWin = matchingAXWindow(pid: pid, frame: stuck) {
-                return .titleBarOutOfReach(window: axWin, frame: stuck)
+            if let axWin = matchingAXWindow(pid: stuck.pid, frame: stuck.frame) {
+                return .titleBarOutOfReach(window: axWin, frame: stuck.frame)
             }
         }
 
@@ -144,7 +165,8 @@ enum Usability {
                   let b = w[kCGWindowBounds as String] as? [String: CGFloat],
                   let h = b["Height"], let width = b["Width"],
                   let x = b["X"], let y = b["Y"],
-                  h >= smallestRealWindow, width >= 200
+                  h >= smallestRealWindow,
+                  width >= ScreenSpace.smallestRealWindowWidth
             else { continue }
             out.append(CGRect(x: x, y: y, width: width, height: h))
         }
@@ -189,16 +211,29 @@ enum Usability {
     /// Nudges a window down until its title bar is grabbable again.
     @discardableResult
     static func bringTitleBarIntoReach(_ win: AXUIElement, frame: CGRect) -> Bool {
-        let target = NSScreen.screens
-            .first { $0.frame.intersects(frame) }?.visibleFrame
-            ?? NSScreen.main?.visibleFrame
-        guard let screen = target else { return false }
+        let screens = ScreenSpace.usableScreens()
+        let screen = screens.first { $0.intersects(frame) }
+            ?? WindowScan.screenUnderCursor()
+        guard !screen.isNull else { return false }
 
         // Just far enough in that the whole title bar is on the screen, and no
         // further — a window someone placed deliberately should move as little as
         // possible.
         var p = CGPoint(x: max(frame.minX, screen.minX + 8),
                         y: max(frame.minY, screen.minY + 8))
+        guard let v = AXValueCreate(.cgPoint, &p) else { return false }
+        return AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, v) == .success
+    }
+
+    /// Restores the whole window while preserving every part of its placement
+    /// that already fits. This is the quiet repair after a person selects an app.
+    @discardableResult
+    static func slideFullyIntoView(_ win: AXUIElement, frame: CGRect) -> Bool {
+        let screens = ScreenSpace.usableScreens()
+        let preferred = WindowScan.screenUnderCursor()
+        guard !screens.isEmpty, !preferred.isNull else { return false }
+        var p = ScreenSpace.slideIntoView(frame, screens: screens,
+                                          preferred: preferred)
         guard let v = AXValueCreate(.cgPoint, &p) else { return false }
         return AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, v) == .success
     }

@@ -12,6 +12,7 @@ struct Finding: Identifiable, Equatable {
         case appsWontComeForward    // AppleSpacesSwitchOnActivate turned off
         case hiddenMinimized        // minimize-to-application turned on
         case strandedWindows        // windows parked where no screen can reach
+        case windowOffTheEdge       // window mostly past a screen edge, still just visible
         case appShowsNothing        // app is open and in front but has no window
         case appNotResponding       // app has stopped answering; cannot be fixed
         case titleBarOutOfReach     // window visible but its top edge is unreachable
