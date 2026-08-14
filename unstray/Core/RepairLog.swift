@@ -81,15 +81,25 @@ enum RepairLog {
         ])
     }
 
-    static func repaired(_ f: Finding, success: Bool) {
+    /// Records what the repair DID, not whether it "worked".
+    ///
+    /// This used to write a `success` flag taken from the repair's own Bool,
+    /// and each repair meant something different by that Bool — one of them
+    /// reported opening Activity Monitor as a successful repair of a frozen
+    /// app. The flag is gone rather than renamed, because no reader could tell
+    /// which meaning any given line carried.
+    static func repaired(_ f: Finding, outcome: RepairOutcome) {
         write(event: "repaired", detail: [
             "kind": f.kind.rawValue,
-            "success": success,
+            "outcome": outcome.rawValue,
             "neededLogout": f.costWarning != nil
         ])
     }
 
-    static func rescued(count: Int) {
-        write(event: "rescued", detail: ["windows": count])
+    /// How many windows moved, against how many were reported. They are allowed
+    /// to differ — an app can put a window back on its own, and a window one
+    /// screenful away can go out of reach between the scan and the button.
+    static func rescued(moved: Int, reported: Int) {
+        write(event: "rescued", detail: ["moved": moved, "reported": reported])
     }
 }

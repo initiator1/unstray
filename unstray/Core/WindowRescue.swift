@@ -119,12 +119,12 @@ enum WindowRescue {
 
     /// Pulls specific unreachable things back onto the screen you are using.
     @discardableResult
-    static func rescue(_ items: [WindowScan.OutOfReach]) -> Bool {
-        guard hasPermission else { return false }
+    static func rescue(_ items: [WindowScan.OutOfReach]) -> RepairOutcome {
+        guard hasPermission else { return .failed }
         let screens = ScreenSpace.screens()
         let usableScreens = ScreenSpace.usableScreens()
-        guard !screens.isEmpty, !usableScreens.isEmpty else { return false }
-        var movedAny = false
+        guard !screens.isEmpty, !usableScreens.isEmpty else { return .failed }
+        var moved = 0
 
         for item in items {
             // The app has to be frontmost for its things to become visible to
@@ -153,11 +153,14 @@ enum WindowRescue {
                     continue
                 }
                 if move(win, to: destination) {
-                    movedAny = true
+                    moved += 1
                 }
             }
         }
-        return movedAny
+        // Both numbers, because they are allowed to differ and a later
+        // diagnosis needs to see which one fell short.
+        RepairLog.rescued(moved: moved, reported: items.count)
+        return moved > 0 ? .changed : .failed
     }
 
     /// The hotkey action: gather everything belonging to the app you are trying
@@ -193,6 +196,7 @@ enum WindowRescue {
         if let app = NSRunningApplication(processIdentifier: pid), app.isHidden {
             app.unhide()
         }
+
         bringToFront(pid: pid)
         usleep(120_000)
 

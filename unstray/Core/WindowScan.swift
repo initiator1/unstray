@@ -54,9 +54,10 @@ enum WindowScan {
             technicalNote: "AX request timed out (kAXErrorCannotComplete) at 0.5s while app was frontmost.",
             repair: {
                 // Opens the panel where a person can force-quit safely, rather
-                // than doing it for them and losing their unsaved work.
+                // than doing it for them and losing their unsaved work. Nothing
+                // is repaired here, and the log must not pretend otherwise.
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
-                return true
+                return .handedToThePerson
             }
         )
     }
@@ -83,10 +84,10 @@ enum WindowScan {
             repair: {
                 guard let app = NSWorkspace.shared.runningApplications.first(where: {
                     $0.localizedName == appName
-                }) else { return false }
+                }) else { return .failed }
                 guard case .titleBarOutOfReach(let w, let f)? =
-                        Usability.problem(for: app) else { return false }
-                return Usability.bringTitleBarIntoReach(w, frame: f)
+                        Usability.problem(for: app) else { return .failed }
+                return Usability.bringTitleBarIntoReach(w, frame: f) ? .changed : .failed
             }
         )
     }
@@ -111,7 +112,9 @@ enum WindowScan {
             actionLabel: "Try again for me",
             costWarning: nil,
             technicalNote: "FB21087054: app frontmost, activationPolicy .regular, no window >=120pt tall on any screen; kAEReopenApplication sent, still nothing.",
-            repair: { AppReopen.askByName(appName) }
+            // Asking is all this can do. A headless browser accepted the same
+            // request and ignored it, so an accepted request is never a repair.
+            repair: { AppReopen.askByName(appName) ? .asked : .failed }
         )
     }
 
@@ -354,7 +357,7 @@ enum WindowScan {
                     + "\(Int(visible.width))x\(Int(visible.height))"
             }.joined(separator: ", "),
             repair: {
-                if !items.isEmpty, WindowRescue.rescue(items) { return true }
+                if !items.isEmpty, WindowRescue.rescue(items) == .changed { return .changed }
 
                 // The check that runs when a person selects an app accepts a
                 // shorter window than this all-Spaces scan does, so it can raise
@@ -370,7 +373,7 @@ enum WindowScan {
                     else { continue }
                     if Usability.slideFullyIntoView(w, frame: f) { moved = true }
                 }
-                return moved
+                return moved ? .changed : .failed
             }
         )
     }

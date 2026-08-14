@@ -87,6 +87,7 @@ enum SettingsCheck {
             technicalNote: "com.apple.spaces spans-displays = 1; want 0. 'Displays have separate Spaces' is OFF. Requires logout.",
             repair: {
                 write(domain: "com.apple.spaces", key: "spans-displays", value: false)
+                    ? .changed : .failed
             }
         )
     }
@@ -121,6 +122,7 @@ enum SettingsCheck {
             technicalNote: "NSGlobalDomain AppleSpacesSwitchOnActivate = 0; want 1. No public API can force a Space switch for a window you don't own, so this setting is load-bearing.",
             repair: {
                 write(domain: "NSGlobalDomain", key: "AppleSpacesSwitchOnActivate", value: true)
+                    ? .changed : .failed
             }
         )
     }
@@ -153,7 +155,7 @@ enum SettingsCheck {
             repair: {
                 let ok = write(domain: "com.apple.dock", key: "minimize-to-application", value: false)
                 if ok { restartDock() }
-                return ok
+                return ok ? .changed : .failed
             }
         )
     }

@@ -32,6 +32,19 @@ enum ScreenSpace {
     /// The bounding box of every piece a window shares with the current screens.
     /// A window spanning two screens remains one reachable shape instead of two
     /// unrelated fragments.
+    ///
+    /// Screens set beside each other share an edge however far up or down one is
+    /// slid, so the pieces of a window touching both always meet, and the
+    /// bounding box is the shape the person sees.
+    ///
+    /// Two screens dragged to meet only at a CORNER are the exception: the
+    /// pieces are then separated by dead space, and this counts that space as
+    /// visible. Left that way on purpose, 2026-08-14. Every caller uses this
+    /// number to decide whether to speak — the size floor in `WindowUse.judge`,
+    /// the "this app still has something on screen" test in `findOutOfReach`,
+    /// and one line of the log — so a generous answer keeps unstray quiet, while
+    /// a stingy one invents problems. Crying wolf is the failure this app has
+    /// actually shipped; missing a two-corner window on a diagonal desk is not.
     static func visiblePart(of window: CGRect, screens: [CGRect]) -> CGRect {
         screens.reduce(CGRect.null) { visible, screen in
             let part = window.intersection(screen)

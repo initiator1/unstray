@@ -530,8 +530,7 @@ final class VerdictModel: ObservableObject {
     }
 
     func repair(_ f: Finding) {
-        let ok = f.repair()
-        RepairLog.repaired(f, success: ok)
+        RepairLog.repaired(f, outcome: f.repair())
         recheck()
         // Some repairs ask another app to act after their call returns. One
         // settled look confirms the answer after that app has had time to move.

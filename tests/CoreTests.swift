@@ -127,7 +127,7 @@ func testSeverityOrder() {
                  _ severity: Finding.Severity) -> Finding {
         Finding(id: id, kind: kind, severity: severity,
                 headline: "", explanation: "", actionLabel: "",
-                costWarning: nil, technicalNote: "", repair: { false })
+                costWarning: nil, technicalNote: "", repair: { .failed })
     }
 
     let nothing = finding("nothing", .appShowsNothing, .nowBroken)
@@ -297,6 +297,32 @@ func testUsabilityVsExistence() {
           "geometry alone would call this healthy")
 }
 
+// MARK: - What a repair says it did
+//
+// These four words go into the log, and the log is what a later diagnosis
+// reads. Renaming one silently changes the meaning of every line already
+// written, so the words are pinned here.
+
+func testRepairOutcome() {
+    print("\nwhat a repair says it did")
+    check("changed", RepairOutcome.changed.rawValue == "changed")
+    check("asked", RepairOutcome.asked.rawValue == "asked")
+    check("handed to the person",
+          RepairOutcome.handedToThePerson.rawValue == "handedToThePerson")
+    check("failed", RepairOutcome.failed.rawValue == "failed")
+
+    // The whole point of the change. Opening Activity Monitor repairs nothing,
+    // and an accepted request is not a completed one.
+    check("handing over is not a change",
+          RepairOutcome.handedToThePerson != .changed)
+    check("asking is not a change", RepairOutcome.asked != .changed)
+
+    let vocabulary = [RepairOutcome.changed, .asked, .handedToThePerson, .failed]
+        .map { $0.rawValue }
+    check("no repair reports plain success",
+          !vocabulary.contains("success") && Set(vocabulary).count == 4)
+}
+
 // MARK: - The whole window judgement
 //
 // These tests call WindowUse, including the measured Epson rectangle. Its 40pt
@@ -311,6 +337,25 @@ func testScreenSpace() {
     check("flipping a rectangle twice restores it",
           ScreenSpace.flip(ScreenSpace.flip(source, primaryTop: 1080),
                            primaryTop: 1080) == source)
+
+    // Screens beside each other share an edge, however far up or down one is
+    // slid, so any window touching both touches them along that shared edge and
+    // the two pieces meet. That is why visiblePart returns a bounding box, and
+    // the spanning test further down is the ordinary case.
+    //
+    // The limit, kept on purpose: screens dragged to meet at a CORNER leave
+    // dead space between them, and the bounding box counts that space as
+    // visible. Such a window reads as fully visible when a person can see only
+    // two corners of it. Every caller uses this number to decide whether to
+    // SPEAK, so a generous answer keeps unstray quiet instead of crying wolf —
+    // and crying wolf is the failure this app has actually shipped, twice.
+    // Deliberate, checked against every caller, not a bug to be tidied away.
+    let cornerToCorner = [CGRect(x: 0, y: 0, width: 1496, height: 967),
+                          CGRect(x: 1496, y: 967, width: 1920, height: 1080)]
+    let acrossTheGap = CGRect(x: 1200, y: 700, width: 800, height: 600)
+    check("a corner-to-corner gap still reads as visible, on purpose",
+          ScreenSpace.visiblePart(of: acrossTheGap, screens: cornerToCorner)
+            == acrossTheGap)
 
     let epson = CGRect(x: 1880, y: 363, width: 434, height: 700)
     let epsonReport = WindowUse.judge(epson, onThisScreenful: true,
@@ -807,6 +852,7 @@ testReachability()
 testWindowFiltering()
 testSettings()
 testSeverityOrder()
+testRepairOutcome()
 testOpenProblemFate()
 testVersionDrift()
 testHeadlines()

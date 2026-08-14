@@ -1,5 +1,29 @@
 import Foundation
 
+/// What a repair actually did.
+///
+/// Every repair used to answer that with a Bool, and each one meant something
+/// different by it. Opening Activity Monitor returned true having repaired
+/// nothing. Asking an app to show a window returned true when the request was
+/// accepted, and a headless browser proved a request can be accepted and then
+/// ignored. Moving a window returned whether the accessibility layer took a new
+/// position.
+///
+/// Nothing on screen ever read that value — `recheck()` decides what the panel
+/// says. The log did, and the log is what a later diagnosis reads. "Opened
+/// Activity Monitor" recorded as a successful repair of a frozen app is data
+/// that will mislead somebody, so this records which of these happened instead.
+enum RepairOutcome: String {
+    /// unstray changed something itself and macOS accepted the change.
+    case changed
+    /// unstray asked another app to act. Being accepted is not being done.
+    case asked
+    /// Nothing was repaired. The person was shown where they can finish it.
+    case handedToThePerson
+    /// unstray tried, and the change did not take.
+    case failed
+}
+
 /// One thing the Mac is doing to the person, described the way they experience it.
 ///
 /// Every user-facing string on a Finding is written to `docs/plain-language.md`.
@@ -72,8 +96,8 @@ struct Finding: Identifiable, Equatable {
     /// For the log and for Aria. Never rendered on screen.
     let technicalNote: String
 
-    /// Applies the repair. Returns true if the change landed.
-    let repair: () -> Bool
+    /// Applies the repair, and says what it did rather than whether it "worked".
+    let repair: () -> RepairOutcome
 
     static func == (a: Finding, b: Finding) -> Bool { a.id == b.id }
 
