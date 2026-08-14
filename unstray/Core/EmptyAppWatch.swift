@@ -74,10 +74,13 @@ final class EmptyAppWatch {
     /// with a different pid, and asking only about the main process reports an
     /// app as empty while its window is sitting right there.
     private func showsNothing(_ app: NSRunningApplication) -> Bool {
-        let screens = ScreenSpace.screens()
-        let windows = Usability.relatedPIDs(of: app).flatMap { Usability.realWindows(pid: $0) }
+        let windows = Usability.relatedPIDs(of: app).flatMap {
+            Usability.windows(pid: $0, scope: .oneChosenApp)
+        }
+        // Keep this weaker than `.usable`. A window mostly past an edge has
+        // appeared, so saying that nothing came up would be false.
         return !windows.contains {
-            !ScreenSpace.visiblePart(of: $0, screens: screens).isNull
+            !$0.visible.isNull
         }
     }
 

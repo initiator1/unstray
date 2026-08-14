@@ -57,8 +57,10 @@ failure the app exists to correct.
 So: scan with CGWindowList to find what is unreachable, then bring the owning
 app frontmost (which makes its windows visible to AX), then move them with AX.
 
-`ScreenSpace` converts every `NSScreen` rectangle before that comparison. It
-also separates a useful partial window from a sliver that is too small to use.
+`ScreenSpace` converts every `NSScreen` rectangle and owns rectangle arithmetic.
+`WindowUse` then gives every scan and repair one answer about whether a person
+can use a window where it is. Its context sets the initial size floor, while the
+visible-area bar stays fixed.
 
 Filter `activationPolicy != .regular` or menu-bar helpers register as problems.
 

@@ -135,18 +135,22 @@ enum WindowRescue {
             for win in axWindows(item.pid) {
                 if isMinimized(win) { unminimize(win) }
                 guard let f = frame(of: win) else { continue }
-                let visible = ScreenSpace.visiblePart(of: f, screens: screens)
+                // AX returns only the current screenful, so this window can be
+                // moved. The button also names the app, so the lower floor fits.
+                let report = WindowUse.judge(f, onThisScreenful: true,
+                                             screens: screens,
+                                             scope: .oneChosenApp)
                 let destination: CGPoint
-                switch item.reason {
-                case .strandedOffEveryScreen:
-                    guard visible.isNull else { continue }
+                switch (item.reason, report.verdict) {
+                case (.strandedOffEveryScreen, .lostOffEveryScreen):
                     destination = placeInside(f.size, screen: item.rescueTarget)
-                case .pushedPastTheEdge:
-                    guard !visible.isNull,
-                          !ScreenSpace.isReachable(f, screens: screens)
-                    else { continue }
+
+                case (.pushedPastTheEdge, .pushedPastTheEdge):
                     destination = ScreenSpace.slideIntoView(
                         f, screens: usableScreens, preferred: item.rescueTarget)
+
+                default:
+                    continue
                 }
                 if move(win, to: destination) {
                     movedAny = true
@@ -207,13 +211,24 @@ enum WindowRescue {
             // A useful window keeps the position the person chose. A lost one
             // returns to the current screen, while a visible sliver moves only
             // far enough to restore the whole window.
-            let visible = ScreenSpace.visiblePart(of: f, screens: screens)
-            if visible.isNull {
+            // AX returns only the current screenful, so this window can be
+            // moved. The rescue key names the app, so the lower floor fits.
+            let report = WindowUse.judge(f, onThisScreenful: true,
+                                         screens: screens,
+                                         scope: .oneChosenApp)
+            switch report.verdict {
+            case .lostOffEveryScreen:
                 if move(win, to: placeInside(f.size, screen: target)) { didSomething = true }
-            } else if !ScreenSpace.isReachable(f, screens: screens) {
+
+            case .pushedPastTheEdge:
                 let destination = ScreenSpace.slideIntoView(
                     f, screens: usableScreens, preferred: target)
                 if move(win, to: destination) { didSomething = true }
+
+            case .usable,
+                 .notSomethingYouWereWorkingIn,
+                 .titleBarOutOfReach:
+                break
             }
         }
         return didSomething

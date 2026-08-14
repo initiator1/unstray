@@ -12,6 +12,7 @@ cp tests/CoreTests.swift "$OUT/main.swift"
 swiftc -o "$OUT/tests" \
     unstray/Core/PanelPlacement.swift \
     unstray/Core/ScreenSpace.swift \
+    unstray/Core/WindowUse.swift \
     unstray/Core/EmptyAppPatience.swift \
     unstray/Core/WindowlessByDesign.swift \
     "$OUT/main.swift" 2>&1 | grep -E "error" && exit 1

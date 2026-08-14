@@ -37,6 +37,7 @@ swiftc -O \
   unstray/Core/Finding.swift \
   unstray/Core/SettingsCheck.swift \
   unstray/Core/ScreenSpace.swift \
+  unstray/Core/WindowUse.swift \
   unstray/Core/WindowScan.swift \
   unstray/Core/WindowRescue.swift \
   unstray/Core/RepairLog.swift \

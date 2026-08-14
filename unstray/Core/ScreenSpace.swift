@@ -5,14 +5,8 @@ import Cocoa
 /// AppKit measures upward from the primary screen's bottom-left corner. The
 /// window server and accessibility layer measure downward from its top-left
 /// corner. Those systems look identical on one screen and disagree as soon as a
-/// screen sits above or below the primary one, so every comparison belongs here.
+/// screen sits above or below the primary one, so every conversion belongs here.
 enum ScreenSpace {
-
-    /// These floors define whether the visible part can still serve as a real
-    /// window. Keeping them here prevents scanning and repair from drifting into
-    /// different answers about the same rectangle.
-    static let smallestRealWindowWidth: CGFloat = 200
-    static let smallestRealWindowHeight: CGFloat = 120
 
     /// Converts between AppKit coordinates and the window coordinates that
     /// CGWindowList and the accessibility layer both use. Reflecting the same
@@ -44,15 +38,6 @@ enum ScreenSpace {
             guard !part.isNull, !part.isEmpty else { return visible }
             return visible.union(part)
         }
-    }
-
-    /// A visible sliver is not useful. The part left on the screens must still
-    /// be large enough to count as the kind of window the app scans for.
-    static func isReachable(_ window: CGRect, screens: [CGRect]) -> Bool {
-        let visible = visiblePart(of: window, screens: screens)
-        return !visible.isNull
-            && visible.width >= smallestRealWindowWidth
-            && visible.height >= smallestRealWindowHeight
     }
 
     /// Moves only the dimensions that cross a usable edge. The screen holding

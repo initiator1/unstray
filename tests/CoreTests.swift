@@ -29,7 +29,8 @@ func check(_ name: String, _ condition: Bool, _ detail: String = "") {
 // touch one. ScreenSpace makes the stronger usability decision below.
 
 func unreachable(_ r: CGRect, _ screens: [CGRect]) -> Bool {
-    ScreenSpace.visiblePart(of: r, screens: screens).isNull
+    WindowUse.judge(r, onThisScreenful: true, screens: screens,
+                    scope: .oneChosenApp).visible.isNull
 }
 
 func testReachability() {
@@ -68,7 +69,10 @@ func testReachability() {
 // helpers and toolbars were reported as lost windows.
 
 func isRealWindow(width: CGFloat, height: CGFloat, layer: Int) -> Bool {
-    layer == 0 && width >= 200 && height >= 150
+    layer == 0 && WindowUse.isSomethingYouWereWorkingIn(
+        CGRect(x: 0, y: 0, width: width, height: height),
+        scope: .everyWindow
+    )
 }
 
 func testWindowFiltering() {
@@ -186,31 +190,36 @@ func testDiagram() {
     check("three screens still fit across", wide <= 320)
 }
 
-// MARK: - Can you actually use it?
+// MARK: - WindowUse: can a person actually use it?
 //
-// Existence is not usability. These guard the class of bug that let CotEditor
-// through: a window can exist and still be no use to anyone.
-
-func titleBarReachable(_ r: CGRect, _ screens: [CGRect]) -> Bool {
-    let bar = CGRect(x: r.minX, y: r.minY, width: r.width, height: 30)
-    return screens.contains { $0.intersects(bar) }
-}
+// Existence is not usability. These call the one shipped judgement and guard
+// both failures that taught the app this lesson.
 
 func testTitleBarReach() {
     print("\ntitle bar reachability")
     let one = [CGRect(x: 0, y: 0, width: 1440, height: 900)]
     check("a normal window can be grabbed",
-          titleBarReachable(CGRect(x: 100, y: 100, width: 800, height: 600), one))
+          WindowUse.judge(CGRect(x: 100, y: 100, width: 800, height: 600),
+                          onThisScreenful: true, screens: one,
+                          scope: .oneChosenApp).verdict == .usable)
     check("5pt above the top is still grabbable",
-          titleBarReachable(CGRect(x: 100, y: -5, width: 800, height: 600), one),
+          WindowUse.judge(CGRect(x: 100, y: -5, width: 800, height: 600),
+                          onThisScreenful: true, screens: one,
+                          scope: .oneChosenApp).verdict == .usable,
           "part of the strip is still on screen")
     check("40pt above the top cannot be grabbed",
-          !titleBarReachable(CGRect(x: 100, y: -40, width: 800, height: 600), one),
+          WindowUse.judge(CGRect(x: 100, y: -40, width: 800, height: 600),
+                          onThisScreenful: true, screens: one,
+                          scope: .oneChosenApp).verdict == .titleBarOutOfReach,
           "the window is visible but there is nothing left to drag")
     check("flush with the top edge is grabbable",
-          titleBarReachable(CGRect(x: 100, y: 0, width: 800, height: 600), one))
-    check("far above the screen cannot be grabbed",
-          !titleBarReachable(CGRect(x: 100, y: -500, width: 800, height: 600), one))
+          WindowUse.judge(CGRect(x: 100, y: 0, width: 800, height: 600),
+                          onThisScreenful: true, screens: one,
+                          scope: .oneChosenApp).verdict == .usable)
+    check("far above the screen leaves too little to use",
+          WindowUse.judge(CGRect(x: 100, y: -500, width: 800, height: 600),
+                          onThisScreenful: true, screens: one,
+                          scope: .oneChosenApp).verdict == .pushedPastTheEdge)
 }
 
 func testUsabilityVsExistence() {
@@ -218,18 +227,23 @@ func testUsabilityVsExistence() {
     let one = [CGRect(x: 0, y: 0, width: 1440, height: 900)]
     // The CotEditor case: leftovers exist, inside the screen, and are useless.
     let leftover = CGRect(x: 0, y: 0, width: 1168, height: 26)
+    let chosen = WindowUse.judge(leftover, onThisScreenful: true,
+                                 screens: one, scope: .oneChosenApp)
+    let sweep = WindowUse.judge(leftover, onThisScreenful: true,
+                                screens: one, scope: .everyWindow)
     check("a 26pt strip is not something to look at",
-          !isRealWindow(width: leftover.width, height: leftover.height, layer: 0),
+          chosen.verdict == .notSomethingYouWereWorkingIn
+            && sweep.verdict == .notSomethingYouWereWorkingIn,
           "this exact shape made an early version report 'all clear'")
-    check("a 26pt strip does intersect the screen, which is why size must be checked",
-          one.contains { $0.intersects(leftover) },
+    check("a 26pt strip still has its visible part measured",
+          !chosen.visible.isNull && !sweep.visible.isNull,
           "geometry alone would call this healthy")
 }
 
-// MARK: - Is enough of the window left to use?
+// MARK: - The whole window judgement
 //
-// These tests call the shipped ScreenSpace code. The measured Epson rectangle
-// is the regression case: its 40pt corner exists, but a person cannot use it.
+// These tests call WindowUse, including the measured Epson rectangle. Its 40pt
+// corner exists, but a person cannot use it.
 
 func testScreenSpace() {
     print("\nscreen coordinates and usable window area")
@@ -242,29 +256,56 @@ func testScreenSpace() {
                            primaryTop: 1080) == source)
 
     let epson = CGRect(x: 1880, y: 363, width: 434, height: 700)
-    let epsonVisible = ScreenSpace.visiblePart(of: epson, screens: one)
+    let epsonReport = WindowUse.judge(epson, onThisScreenful: true,
+                                      screens: one, scope: .oneChosenApp)
     check("the measured Epson sliver is 40pt wide and unusable",
-          epsonVisible.width == 40 && !ScreenSpace.isReachable(epson, screens: one))
+          epsonReport.visible.width == 40
+            && epsonReport.verdict == .pushedPastTheEdge)
 
     let halfOff = CGRect(x: 1703, y: 300, width: 434, height: 700)
+    let halfOffReport = WindowUse.judge(halfOff, onThisScreenful: true,
+                                        screens: one, scope: .oneChosenApp)
     check("217pt left on screen remains reachable",
-          ScreenSpace.visiblePart(of: halfOff, screens: one).width == 217
-            && ScreenSpace.isReachable(halfOff, screens: one))
+          halfOffReport.visible.width == 217
+            && halfOffReport.verdict == .usable)
 
     let fullyOn = CGRect(x: 200, y: 200, width: 800, height: 600)
+    let fullyOnReport = WindowUse.judge(fullyOn, onThisScreenful: true,
+                                        screens: one, scope: .oneChosenApp)
     check("a window fully on screen remains reachable",
-          ScreenSpace.isReachable(fullyOn, screens: one))
+          fullyOnReport.verdict == .usable)
 
     let nowhere = CGRect(x: 3000, y: 300, width: 434, height: 700)
+    let nowhereReport = WindowUse.judge(nowhere, onThisScreenful: true,
+                                        screens: one, scope: .oneChosenApp)
     check("a window touching no screen has no visible part",
-          ScreenSpace.visiblePart(of: nowhere, screens: one).isNull
-            && !ScreenSpace.isReachable(nowhere, screens: one))
+          nowhereReport.visible.isNull
+            && nowhereReport.verdict == .lostOffEveryScreen)
 
     let sideBySide = [screen, CGRect(x: 1920, y: 0, width: 1920, height: 1080)]
     let spanning = CGRect(x: 1800, y: 300, width: 434, height: 700)
+    let spanningReport = WindowUse.judge(spanning, onThisScreenful: true,
+                                         screens: sideBySide,
+                                         scope: .oneChosenApp)
     check("a window spanning two screens stays reachable",
-          ScreenSpace.visiblePart(of: spanning, screens: sideBySide).width == 434
-            && ScreenSpace.isReachable(spanning, screens: sideBySide))
+          spanningReport.visible.width == 434
+            && spanningReport.verdict == .usable)
+
+    let shortWindow = CGRect(x: 200, y: 200, width: 434, height: 130)
+    check("a 130pt window counts only when the person chose its app",
+          WindowUse.judge(shortWindow, onThisScreenful: true,
+                          screens: one,
+                          scope: .everyWindow).verdict
+              == .notSomethingYouWereWorkingIn
+            && WindowUse.judge(shortWindow, onThisScreenful: true,
+                               screens: one,
+                               scope: .oneChosenApp).verdict == .usable)
+
+    let otherScreenful = WindowUse.judge(fullyOn, onThisScreenful: false,
+                                         screens: one, scope: .oneChosenApp)
+    check("another screenful changes movability, not the human verdict",
+          otherScreenful.verdict == fullyOnReport.verdict
+            && !otherScreenful.canBeMoved)
 
     let slidOrigin = ScreenSpace.slideIntoView(epson, screens: one, preferred: screen)
     let slid = CGRect(origin: slidOrigin, size: epson.size)

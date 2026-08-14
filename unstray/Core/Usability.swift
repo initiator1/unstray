@@ -1,7 +1,7 @@
 import Cocoa
 import ApplicationServices
 
-/// Whether you can actually *use* an app's windows right now.
+/// Whether a person can use an app right now.
 ///
 /// ## The mistake this file corrects
 ///
@@ -10,9 +10,9 @@ import ApplicationServices
 /// through. CotEditor was clicked in the Dock and showed nothing, but its
 /// leftover 26pt menu-bar strips existed, so the scan said everything was fine.
 ///
-/// A window can exist and be hidden. Exist and be frozen. Exist and have its
-/// title bar above the top of the screen, so you can see it and cannot move it.
-/// Existence is not usability, and only usability matters to a person.
+/// An app can exist and be hidden, frozen, or still starting. Those app-level
+/// questions and their repairs stay here. `WindowUse` owns the window-level
+/// question, so every path agrees about what a person can read and click.
 enum Usability {
 
     /// Why an app has nothing you can use. Ordered so the cheapest, most
@@ -29,14 +29,6 @@ enum Usability {
         /// No window worth looking at exists at all.
         case nothingToShow
     }
-
-    /// Anything shorter than this is a toolbar or a shadow, not something you
-    /// were trying to look at. CotEditor's leftovers were 26pt tall.
-    static let smallestRealWindow = ScreenSpace.smallestRealWindowHeight
-
-    /// How tall the grabbable strip at the top of a window is. If none of this is
-    /// on a screen, the window cannot be dragged anywhere.
-    private static let titleBarHeight: CGFloat = 30
 
     /// The first thing wrong with this app, or nil when all is well.
     static func problem(for app: NSRunningApplication) -> Problem? {
@@ -61,45 +53,49 @@ enum Usability {
             return .notResponding
         }
 
-        let screens = ScreenSpace.screens()
-
         // Count windows across every process in this app family, so a helper's
         // window rescues the app it belongs to.
-        let windows = relatedPIDs(of: app).flatMap { relatedPID in
-            realWindows(pid: relatedPID).map { (pid: relatedPID, frame: $0) }
+        let judged: [(pid: pid_t, report: WindowUse.Report)] =
+            relatedPIDs(of: app).flatMap { relatedPID in
+                Usability.windows(pid: relatedPID, scope: .oneChosenApp).map {
+                    (pid: relatedPID, report: $0)
+                }
+            }
+        let windowReports = judged.filter {
+            $0.report.verdict != .notSomethingYouWereWorkingIn
         }
 
         // Nothing at all to look at.
-        guard !windows.isEmpty else { return .nothingToShow }
+        guard !windowReports.isEmpty else { return .nothingToShow }
 
         // Everything is off every screen — the stranded case, handled elsewhere
         // by WindowScan, so not reported again here.
-        let onAnyScreen = windows.filter { item in
-            !ScreenSpace.visiblePart(of: item.frame, screens: screens).isNull
+        if windowReports.allSatisfy({ $0.report.verdict == .lostOffEveryScreen }) {
+            return .nothingToShow
         }
-        guard !onAnyScreen.isEmpty else { return .nothingToShow }
 
         // A corner can remain visible while the useful part is gone. This wins
         // over the title-bar question because restoring the whole window fixes
         // both problems with one smaller, clearer repair.
-        if !onAnyScreen.contains(where: {
-            ScreenSpace.isReachable($0.frame, screens: screens)
-        }) {
-            for stuck in onAnyScreen {
-                if let axWin = matchingAXWindow(pid: stuck.pid, frame: stuck.frame) {
-                    return .pushedOffTheEdge(window: axWin, frame: stuck.frame)
+        if !windowReports.contains(where: { $0.report.verdict == .usable }) {
+            for stuck in windowReports where stuck.report.verdict == .pushedPastTheEdge {
+                if let axWin = matchingAXWindow(pid: stuck.pid,
+                                                frame: stuck.report.frame) {
+                    return .pushedOffTheEdge(window: axWin,
+                                            frame: stuck.report.frame)
                 }
             }
         }
 
         // A window you can see but cannot grab. Only worth reporting when NONE
         // of the visible windows is fully usable.
-        let grabbable = onAnyScreen.filter {
-            hasReachableTitleBar($0.frame, screens: screens)
-        }
-        if grabbable.isEmpty, let stuck = onAnyScreen.first {
-            if let axWin = matchingAXWindow(pid: stuck.pid, frame: stuck.frame) {
-                return .titleBarOutOfReach(window: axWin, frame: stuck.frame)
+        if !windowReports.contains(where: { $0.report.verdict == .usable }) {
+            for stuck in windowReports where stuck.report.verdict == .titleBarOutOfReach {
+                if let axWin = matchingAXWindow(pid: stuck.pid,
+                                                frame: stuck.report.frame) {
+                    return .titleBarOutOfReach(window: axWin,
+                                              frame: stuck.report.frame)
+                }
             }
         }
 
@@ -157,32 +153,31 @@ enum Usability {
         return pids
     }
 
-    /// Windows big enough to be worth looking at, from every screenful.
-    static func realWindows(pid: pid_t) -> [CGRect] {
+    /// Every layer-0 window owned by this process, judged from one list read.
+    /// Small leftovers stay in the result because callers need the full set.
+    static func windows(pid: pid_t,
+                        scope: WindowUse.Scope) -> [WindowUse.Report] {
         guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID)
                   as? [[String: Any]]
         else { return [] }
 
-        var out: [CGRect] = []
+        let screens = ScreenSpace.screens()
+        var out: [WindowUse.Report] = []
         for w in list {
             guard let owner = w[kCGWindowOwnerPID as String] as? pid_t, owner == pid,
                   let layer = w[kCGWindowLayer as String] as? Int, layer == 0,
                   let b = w[kCGWindowBounds as String] as? [String: CGFloat],
                   let h = b["Height"], let width = b["Width"],
-                  let x = b["X"], let y = b["Y"],
-                  h >= smallestRealWindow,
-                  width >= ScreenSpace.smallestRealWindowWidth
+                  let x = b["X"], let y = b["Y"]
             else { continue }
-            out.append(CGRect(x: x, y: y, width: width, height: h))
+            let frame = CGRect(x: x, y: y, width: width, height: h)
+            let onThisScreenful = (w[kCGWindowIsOnscreen as String] as? Bool) ?? false
+            out.append(WindowUse.judge(frame,
+                                       onThisScreenful: onThisScreenful,
+                                       screens: screens,
+                                       scope: scope))
         }
         return out
-    }
-
-    /// True when the top strip of the window is somewhere you can reach with the
-    /// mouse.
-    static func hasReachableTitleBar(_ r: CGRect, screens: [CGRect]) -> Bool {
-        let bar = CGRect(x: r.minX, y: r.minY, width: r.width, height: titleBarHeight)
-        return screens.contains { $0.intersects(bar) }
     }
 
     /// Finds the accessibility handle for a window we located by position, since

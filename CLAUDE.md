@@ -16,7 +16,7 @@ open build/unstray.app
 ```
 
 ```bash
-./run-tests.sh              # 91 core logic tests, ~1 second
+./run-tests.sh              # 93 core logic tests, ~1 second
 ./build.sh --notarize       # release build; needs the `unstray` keychain profile
 ```
 
@@ -40,7 +40,8 @@ gated.
 unstray/Core/
   Finding.swift          Finding + Verdict. Every user-facing string lives here.
   SettingsCheck.swift    The three load-bearing macOS settings.
-  ScreenSpace.swift      Converts screen geometry and decides usable window area.
+  ScreenSpace.swift      Converts coordinates and works with rectangles.
+  WindowUse.swift        Decides whether a person can use one window where it is.
   WindowScan.swift       Finds windows beyond or mostly past a screen edge.
   WindowRescue.swift     Moves them back. AX + the Carbon shim.
   LegacyActivation.{h,c} C shim for SetFrontProcessWithOptions.
@@ -93,17 +94,23 @@ All three silently flip during macOS updates. That is the recurring job.
 - **Window and screen rectangles use opposite vertical coordinates.**
   CGWindowList and AX measure down from the primary top-left. NSScreen measures
   up from the primary bottom-left. Every comparison must go through
-  `ScreenSpace`. Touching a screen does not make a window usable. A real Epson
-  settings window left only 40pt of its 434pt width on screen, which was too
-  small to read or click and still passed the old check.
+  `ScreenSpace`.
+- **The app has twice shipped a check that accepted an unusable window.**
+  CotEditor left a 26pt strip, and Epson left a 40pt sliver. `WindowUse` is the
+  only place that answers "can a person use this". Route each new check through
+  it rather than beside it.
 - **Never report a window you cannot move.** Because AX reaches only the current
   Space, an edge-pushed window one screenful over is untouchable, and offering
   "Slide it back" for it puts a button on screen that does nothing forever —
   the exact failure this app exists to remove. `kCGWindowIsOnscreen` is the test
-  that separates them, and it means "on the current screenful", not "visible":
-  measured, a window with 40pt of 509 left on screen reports `true`, while a
-  window sitting squarely in the middle of the screen but one Space over reports
-  `false`. Applied to the edge case only — the stranded scan predates it and is
+  that separates them. Read it as "AX can reach this", never as a claim about
+  pixels — a window sitting squarely in the middle of the screen can report
+  `false`, and one with 40pt of 509 showing can report `true`. Do not try to
+  predict it either: creating a second, unrelated window in the same app flipped
+  the first from `true` to `false` while it had not moved a point. What has held
+  in every measurement, in both directions, is the only thing the code relies on:
+  `true` exactly when the accessibility layer can see and move the window.
+  Applied to the edge case only — the stranded scan predates it and is
   deliberately left alone.
 - **There is no public API to move a window to another Space.** yabai's
   scripting addition needs SIP off plus an NVRAM boot-arg on Tahoe/arm64;

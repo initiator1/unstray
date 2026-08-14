@@ -179,10 +179,52 @@ screen. Both old checks accepted that sliver as usable.
 
 ## Deviations
 
-- The brief says `WindowScan.findStranded()` already used the same 120pt height
-  floor as `Usability.realWindows()`. The live scan used 150pt. The refactored
-  scan keeps its required 150pt filter. Shared reachability uses the requested
-  200pt width and 120pt height floors from `ScreenSpace`.
+- The earlier app-specific scan used a 120pt height floor. The machine-wide scan
+  used 150pt. The refactor keeps both values in `WindowUse.Scope`, while the
+  visible-area bar stays at 200pt wide and 120pt tall.
+- `Usability.problem(for:)` now gives the title-bar repair the window whose title
+  bar is out of reach. The old branch gave it the first on-screen window, which
+  could have a different problem. This is the brief's only behavior correction.
+- **The repairs now hold the same size floor as the checks, which narrows them.**
+  `WindowRescue.rescue` and `gather` used to move any accessibility window they
+  found off screen, at any size. Both now judge through `WindowUse`, so anything
+  under 200x120 is left where it is. This was not asked for; it follows from
+  routing them through the one judgement, and it is kept deliberately.
+
+  Apps park real windows off screen on purpose — an Epson process on this Mac
+  holds surfaces of 64x64 and 1920x30 — and dragging one of those into the middle
+  of somebody's screen would look exactly like the bug this app removes. The old
+  behaviour would have done it. The cost is the opposite case: a genuinely useful
+  window under 120pt tall, stranded, that ⌥⌘R no longer retrieves. That shape is
+  rare, and a thing the app would not call lost should not be a thing it drags
+  back.
+
+## Verified live, 2026-08-14
+
+Reproduced the measured geometry again after the refactor. A window at
+(1880, 200, 509, 700) on a 1920x1080 screen was reported, the button moved it to
+x=1411 flush with the right edge with y untouched, and the rescan came back
+clean. ⌥⌘R moved a window at (1850, 250, 509, 700) to x=1411 the same way.
+
+### `kCGWindowIsOnscreen` is not what the earlier note claimed
+
+That note said the flag means "on the current screenful, not visible". The first
+half is a guess and the measurement does not support it. Creating a second,
+fully visible Finder window flipped the FIRST window's flag from `true` to
+`false` while that window had not moved a point and still had 40pt showing.
+Creating a third flipped it back and knocked out the second.
+
+What was then tested in both directions is narrower and is all the code needs:
+when the flag is `false`, `AXUIElementCopyAttributeValue(kAXWindows)` does not
+return that window at all, so it cannot be read or moved; when it is `true`, AX
+returns it and `kAXPosition` accepts a new value. So read the flag as "the
+accessibility layer can reach this", and never as a claim about pixels or about
+Spaces.
+
+This cost a false alarm during review: a live test built two windows in the
+wrong order, the first went out of AX's reach, the scan correctly reported
+nothing, and that looked like a regression in the refactor. It was the test that
+was wrong. Build the off-edge window LAST when reproducing this by hand.
 
 ## Found during review
 

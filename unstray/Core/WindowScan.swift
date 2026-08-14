@@ -175,35 +175,37 @@ enum WindowScan {
                   let x = b["X"], let y = b["Y"]
             else { continue }
 
-            // Toolbars, shadows, and tiny helper surfaces are not "things you
-            // were working in". Real windows are bigger than this.
-            guard width >= ScreenSpace.smallestRealWindowWidth,
-                  height >= ScreenSpace.smallestRealWindowHeight
-            else { continue }
-
             guard let app = appsByPid[pidNum], !isBackgroundHelper(app) else { continue }
 
             let frame = CGRect(x: x, y: y, width: width, height: height)
-            let visible = ScreenSpace.visiblePart(of: frame, screens: screens)
-            if !visible.isNull { pidsWithVisibleWindows.insert(pidNum) }
-
-            // The broad usability check accepts a shorter document window. The
-            // all-Spaces scan keeps its stricter historical filter to avoid the
-            // helper panels that produced early false alarms.
-            guard height >= 150 else { continue }
-
             // Whether this window belongs to the screenful the person is looking
             // at right now. Measured: a window shoved off the right edge of the
             // current screenful still reports true; every window belonging to
             // another screenful reports false, even one sitting squarely in the
             // middle of the screen.
             let onThisScreenful = (w[kCGWindowIsOnscreen as String] as? Bool) ?? false
+            // The chosen-app floor decides whether this process has a visible
+            // window. A shorter window still proves the app has something on
+            // screen, even when the machine-wide sweep will not report it.
+            let report = WindowUse.judge(frame,
+                                         onThisScreenful: onThisScreenful,
+                                         screens: screens,
+                                         scope: .oneChosenApp)
+            guard report.verdict != .notSomethingYouWereWorkingIn else { continue }
+            if !report.visible.isNull { pidsWithVisibleWindows.insert(pidNum) }
+
+            // A machine-wide sweep has no signal that the person chose this app,
+            // so it keeps the higher historical bar that prevents false alarms.
+            guard WindowUse.isSomethingYouWereWorkingIn(
+                frame, scope: .everyWindow
+            ) else { continue }
 
             let reason: OutOfReach.Reason?
-            if visible.isNull {
+            switch report.verdict {
+            case .lostOffEveryScreen:
                 reason = .strandedOffEveryScreen
-            } else if !ScreenSpace.isReachable(frame, screens: screens),
-                      onThisScreenful {
+
+            case .pushedPastTheEdge:
                 // Only ever report an edge-pushed window we can actually move.
                 //
                 // The accessibility layer reaches only the current screenful,
@@ -213,8 +215,11 @@ enum WindowScan {
                 // it back" button on screen that does nothing, forever. That is
                 // the exact failure this app exists to remove. When the person
                 // moves to that screenful, this scan sees it and can fix it.
-                reason = .pushedPastTheEdge
-            } else {
+                reason = report.canBeMoved ? .pushedPastTheEdge : nil
+
+            case .usable,
+                 .notSomethingYouWereWorkingIn,
+                 .titleBarOutOfReach:
                 reason = nil
             }
             classified.append((app.localizedName ?? "Something", pidNum, frame,
