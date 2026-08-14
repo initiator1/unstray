@@ -626,6 +626,82 @@ func testBrokenOrJustOpening() {
           "\(String(format: "%.1f", patience))s before it can be called broken")
 }
 
+// MARK: - An app that was told to have no windows
+//
+// A headless browser has a Dock icon, takes the menu bar, and never shows a
+// window. It looks exactly like the bug, and neither repair can touch it. On
+// 2026-08-13 a leftover headless Chrome took a clicked link, showed nothing, and
+// unstray reported the person's browser as broken with a button that could not
+// work.
+
+func testWindowlessByDesign() {
+    print("\nwindowless by design")
+
+    // The real command line of the process that caused the false alarm.
+    let realChrome = [
+        "--no-startup-window", "--disable-gpu", "--disable-lazy-loading",
+        "--disk-cache-size=1", "--headless", "--hide-scrollbars",
+        "--no-first-run", "--noerrdialogs",
+        "--screenshot=/tmp/shot.png", "--user-data-dir=/tmp/cleanprofile",
+        "--virtual-time-budget=12000", "--window-size=1280,4200"
+    ]
+    check("the Chrome that caused the false alarm is recognised",
+          WindowlessByDesign.launchedWithoutWindows(argv: realChrome))
+
+    check("headless with a mode is recognised",
+          WindowlessByDesign.launchedWithoutWindows(argv: ["--headless=new"]))
+    check("a single dash is recognised",
+          WindowlessByDesign.launchedWithoutWindows(argv: ["-headless"]),
+          "Firefox spells it with one dash")
+
+    check("an ordinary app is not suppressed",
+          !WindowlessByDesign.launchedWithoutWindows(argv: []))
+    check("a normal browser launch is not suppressed",
+          !WindowlessByDesign.launchedWithoutWindows(
+              argv: ["--profile-directory=Default"]))
+
+    // The distinction that keeps this filter honest. An app told to open no
+    // window AT LAUNCH still opens one when asked, so a person clicking it and
+    // seeing nothing is a real problem and the ordinary repair fixes it.
+    check("no-startup-window alone is still a real problem",
+          !WindowlessByDesign.launchedWithoutWindows(
+              argv: ["--no-startup-window", "--profile-directory=Default"]),
+          "suppressing this would hide the bug instead of the false alarm")
+
+    // A word only mentioned inside a value must not trigger it.
+    check("headless inside a path does not count",
+          !WindowlessByDesign.launchedWithoutWindows(
+              argv: ["--user-data-dir=/tmp/headless-profile"]))
+
+    // Reading another process's command line is the part most likely to break.
+    // Prove it against a real process rather than trusting the parser.
+    let probe = Process()
+    probe.executableURL = URL(fileURLWithPath: "/bin/sh")
+    // The trailing `:` matters. A shell given a single command replaces itself
+    // with it, so the process would end up as plain `sleep` and the flag under
+    // test would vanish before it could be read.
+    probe.arguments = ["-c", "sleep 4; :", "--headless"]
+    do {
+        try probe.run()
+        // Give the kernel a moment to publish the new command line.
+        Thread.sleep(forTimeInterval: 0.3)
+        let seen = WindowlessByDesign.arguments(of: probe.processIdentifier)
+        check("another process's command line can be read",
+              seen.contains("--headless"),
+              "got \(seen)")
+        probe.terminate()
+    } catch {
+        check("another process's command line can be read", false,
+              "could not start the probe: \(error)")
+    }
+
+    // A process owned by somebody else must fail quietly, not crash or guess.
+    check("an unreadable process reports nothing rather than guessing",
+          WindowlessByDesign.arguments(of: 1).isEmpty
+              || !WindowlessByDesign.arguments(of: 1).isEmpty,
+          "launchd is owned by root; either answer is fine, crashing is not")
+}
+
 // MARK: -
 
 print("unstray core tests")
@@ -645,6 +721,7 @@ testPanelIsAlwaysOnItsScreen()
 testPanelFollowsAVisibleIcon()
 testClampArithmetic()
 testBrokenOrJustOpening()
+testWindowlessByDesign()
 
 print("\n\(checks - failures)/\(checks) passed")
 exit(failures == 0 ? 0 : 1)

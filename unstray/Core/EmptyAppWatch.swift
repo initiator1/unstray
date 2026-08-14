@@ -49,8 +49,13 @@ final class EmptyAppWatch {
     private func appCameForward(_ app: NSRunningApplication) {
         // Only apps that appear in the bar at the bottom. Menu-bar helpers have
         // no windows by design and must never be "fixed".
+        //
+        // A headless browser passes that test — Dock icon, menu bar, no windows
+        // ever — so it needs its own filter, or unstray spends the rest of the
+        // session offering to repair something that was never broken.
         guard app.activationPolicy == .regular,
-              app.processIdentifier != getpid()
+              app.processIdentifier != getpid(),
+              !WindowlessByDesign.applies(to: app)
         else { return }
 
         // One check at a time: switching apps quickly should not queue up work.

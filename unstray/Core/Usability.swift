@@ -42,6 +42,11 @@ enum Usability {
     static func problem(for app: NSRunningApplication) -> Problem? {
         let pid = app.processIdentifier
 
+        // An app told at startup to have no windows is not missing one. It looks
+        // identical to the bug from every angle this file can see, and neither
+        // repair can possibly work on it. See WindowlessByDesign.
+        if WindowlessByDesign.applies(to: app) { return nil }
+
         // Hidden first: it is certain, cheap, and trivially fixable.
         if app.isHidden { return .hidden }
 

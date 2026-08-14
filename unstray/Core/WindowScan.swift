@@ -126,7 +126,11 @@ enum WindowScan {
     /// own. Counting these produces false alarms — an earlier version of this
     /// scan reported eight "problems" that were all menu-bar helpers.
     private static func isBackgroundHelper(_ app: NSRunningApplication) -> Bool {
-        app.activationPolicy != .regular
+        // Two ways to be a thing with no windows of its own: live in the top bar,
+        // or be started with an instruction never to open one. The second kind
+        // still has a Dock icon and still takes the menu bar, so it has to be
+        // named separately. See WindowlessByDesign.
+        app.activationPolicy != .regular || WindowlessByDesign.applies(to: app)
     }
 
     /// The screen the mouse is on — where a person is currently looking, and so

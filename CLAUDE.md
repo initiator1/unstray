@@ -16,7 +16,7 @@ open build/unstray.app
 ```
 
 ```bash
-./run-tests.sh              # 82 core logic tests, ~1 second
+./run-tests.sh              # 91 core logic tests, ~1 second
 ./build.sh --notarize       # release build; needs the `unstray` keychain profile
 ```
 
@@ -44,6 +44,7 @@ unstray/Core/
   WindowScan.swift       Finds windows beyond or mostly past a screen edge.
   WindowRescue.swift     Moves them back. AX + the Carbon shim.
   LegacyActivation.{h,c} C shim for SetFrontProcessWithOptions.
+  WindowlessByDesign.swift  Apps started with --headless. Never accuse these.
   RepairLog.swift        JSONL to ~/.unstray/events.jsonl (local only).
   Lifecycle.swift        Launch at login; macOS-update detection.
 unstray/UI/
@@ -124,6 +125,23 @@ All three silently flip during macOS updates. That is the recurring job.
 - **An NSPopover window is 13pt bigger than its panel on every side** (406x656
   around 380x630). Clamp the panel, not the window, or a correctly placed panel
   gets nudged on every open.
+- **A headless browser is not a broken one.** `activationPolicy` is the filter
+  for menu-bar helpers and it does not catch this: a Chrome started with
+  `--headless` gets a Dock icon, takes the menu bar when something activates it,
+  and has no window ever. Both repairs then have to fail — the reopen event is
+  accepted and ignored, and `make new document` errors because Chrome has no
+  documents — so unstray reported a working browser as broken and offered a
+  button that could not work. Worse, the policy is not even stable: a headless
+  Chrome reads non-`.regular` for its first seconds and `.regular` afterwards,
+  so the false alarm came and went. The reliable signal is the command line, read
+  via `KERN_PROCARGS2`. Only true headless flags count — `--no-startup-window`
+  means "no window at launch", not "no window ever", and such an app does open
+  one when asked, so suppressing it would hide the real bug.
+- **Anything that launches a headless Chrome hijacks link clicks.** It registers
+  as `com.google.Chrome`, so macOS hands it every `open -a "Google Chrome"` and
+  every clicked link, and they vanish. Diagnosed 2026-08-13: an automation script
+  in another repo left one running, a link went nowhere, and a Chrome update
+  produced a second Dock icon because the running process held the old bundle.
 - **An app that is opening is indistinguishable from a broken one.** No window,
   not answering, no menu bar — that is a launch, a relaunch, and an in-app
   updater's "Restart to Update", as much as it is the bug. Only elapsed time
