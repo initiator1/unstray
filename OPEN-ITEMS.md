@@ -14,6 +14,24 @@ all-clear this design removes. The product needs either a staleness limit or new
 wording for these three findings that does not imply a recent click. Copy is
 Douglas's call.
 
+## Each repair means something different by "it worked"
+
+2026-08-14. Every `Finding.repair` closure returns a `Bool`, and each one means
+something else. `appNotResponding` opens Activity Monitor and returns a hardcoded
+`true`, having repaired nothing. `appShowsNothing` returns whether an Apple event
+was accepted, and the headless-Chrome case proved an event can be accepted and
+ignored. The window repairs return whether the accessibility layer accepted a new
+position.
+
+This reaches no UI — since 5712af9 the panel is driven by the re-check, not by
+this value — so nothing on screen lies about it. But `RepairLog.repaired` writes
+it as `success`, and that log is what a later diagnosis reads. "Opened Activity
+Monitor" recorded as a successful repair of a frozen app is data that will
+mislead somebody.
+
+Either make the closures return whether the person's problem is gone, or stop
+calling the field `success` and record what was actually attempted.
+
 ## The stranded scan can still offer a button that does nothing
 
 2026-08-13. The edge-pushed check now refuses to report a window on another
