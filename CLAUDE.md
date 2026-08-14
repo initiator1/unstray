@@ -112,8 +112,28 @@ All three silently flip during macOS updates. That is the recurring job.
   the first from `true` to `false` while it had not moved a point. What has held
   in every measurement, in both directions, is the only thing the code relies on:
   `true` exactly when the accessibility layer can see and move the window.
-  Applied to the edge case only — the stranded scan predates it and is
-  deliberately left alone.
+  Confirmed again on 2026-08-14 from the far end: a window parked at x = -12000,
+  off every screen, still reported `true` while it sat on the current screenful,
+  and `false` the moment a fullscreen window put a different screenful in front.
+  Applied to the edge case only. **The stranded scan deliberately does not use
+  it, and that is not an oversight** — see the next entry.
+- **Bringing an app forward is what carries the person to its screenful, and
+  that takes about a third of a second.** Two things were measured on
+  2026-08-14 that the code had assumed the opposite of:
+  - The accessibility layer answers for an app that is **not** frontmost, as
+    long as the window is on the current screenful. Activation is not what
+    makes a window visible to AX; being on this screenful is.
+  - When the window is one screenful away, activation moves the person there,
+    and AX returns *nothing at all* until that move finishes. First answer at
+    350ms. At the 120ms the rescue used to wait, five runs out of five saw no
+    windows; a further 148–498ms saw the window every time.
+
+  So a fixed wait is a race, and losing it is silent: no windows, nothing moved,
+  nothing said. `WindowRescue.reachableWindows` waits for the windows instead of
+  for the clock. This is also why the stranded scan reports a window one
+  screenful away and is right to — the button brings the person to it. Measured:
+  the real "Bring it back" repair, pressed while a fullscreen window held the
+  screen, moved a window from x = -12000 back to the middle of the display.
 - **There is no public API to move a window to another Space.** yabai's
   scripting addition needs SIP off plus an NVRAM boot-arg on Tahoe/arm64;
   `hs.spaces.moveWindowToSpace` has been broken upstream since Sonoma 14.5.

@@ -121,5 +121,9 @@ private APIs, and anything sandboxed (this cannot ship on the Mac App Store).
 Working: the check engine, both verdict panels, the permission flow, launch at
 login, macOS-update detection, the rescue engine, and the log.
 
-Untested in the wild: the rescue hotkey against a genuinely stranded window,
-because after the settings fix this machine no longer has one.
+The rescue key now has a genuinely stranded window behind it. On 2026-08-14 a
+real window was parked at a spot no screen covers, and the installed app was
+sent a real ⌥⌘R: it brought the window back to the middle of the screen and
+wrote the rescue into its own log. The same window was rescued from a different
+screenful by the panel's own button. Both cases were built on purpose, since
+this machine has had nothing genuinely lost on it since the settings were fixed.

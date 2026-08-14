@@ -1,3 +1,119 @@
+# The rescue was racing a screenful change, and losing
+
+2026-08-14. Four open items closed together, because one measurement answered
+three of them.
+
+## Method
+
+Nothing was changed until real windows existed to change it against. A small
+harness makes ONE window at an exact position and keeps it there, and a second
+tool drives the shipped `WindowScan` and `WindowRescue` sources — compiled in,
+never copied — against it. A window made to fill the whole screen supplies the
+second screenful, which is the only way to reach the "one screenful away"
+condition without driving Mission Control by hand.
+
+A binary launched from the shell inherits the terminal's Accessibility
+permission, so all of this runs without asking anyone for anything.
+
+## What was measured
+
+1. **A window parked at x = -12000, off every screen, reports
+   `kCGWindowIsOnscreen = true`** while it sits on the current screenful. Put a
+   different screenful in front and the same window reports `false`, and AX
+   returns nothing for it. The flag has nothing to do with pixels, which is what
+   the earlier note said, now confirmed from the opposite end.
+
+2. **AX answers for an app that is not frontmost.** The comment in `rescue` said
+   the app "has to be frontmost for its things to become visible to the
+   accessibility layer at all". That is wrong. Being on the current screenful is
+   what matters.
+
+3. **Activation is what carries the person to another screenful, and it takes
+   about a third of a second.** First AX answer at 350ms. At the 120ms the
+   rescue waited, five runs out of five saw no windows at all; a further
+   148–498ms saw the window every time.
+
+Losing that race is silent: no windows, nothing moved, nothing said. That is the
+mechanism behind "a three-app rescue moved two and left the third".
+
+## The stranded scan was not offering a dead button
+
+The open item said a window stranded one screenful away is reported and the
+button cannot move it. Built and pressed: it can. `rescue` brings the app
+forward, that carries the person to the window, and the window comes back. The
+real "Bring it back" repair moved a window from x = -12000 into the middle of
+the screen while a fullscreen window held the display.
+
+So the scan is right to report it, and gating it on `kCGWindowIsOnscreen` would
+have hidden a problem this app can fix. What was actually wrong was the wait.
+
+Not measured, and worth knowing: this depends on activation switching
+screenfuls, which is exactly what `AppleSpacesSwitchOnActivate` controls — one
+of the three settings unstray watches. All three read correctly on this Mac, so
+the measurement says nothing about the machine where that setting is off. Left
+in `OPEN-ITEMS.md` rather than guessed at.
+
+## The gap between two screens: no change, on purpose
+
+`ScreenSpace.visiblePart` returns a bounding box, so a window straddling two
+screens with dead space between them counts that space as visible.
+
+Screens set beside each other share an edge however far up or down one is slid,
+and any window touching both then touches them along that shared edge — so the
+pieces always meet and the bounding box is the shape the person sees. Only
+screens dragged to meet at a corner can separate the pieces.
+
+All three callers use this number to decide whether to SPEAK: the size floor in
+`WindowUse.judge`, the "this app still has something on screen" test in
+`findOutOfReach`, and one line of the log. A generous answer keeps unstray
+quiet; a stingy one invents problems. Crying wolf is the failure this app has
+actually shipped — eight menu-bar helpers, then the app the person was reading
+the panel in — and missing a two-corner window on a diagonal desk is not. The
+behaviour is now pinned by a test named for the decision, so the next person
+meets the reasoning rather than the surprise.
+
+## Deprecation pass
+
+| System | Disposition |
+|---|---|
+| `Finding.repair: () -> Bool` | REFACTOR — same field, returns `RepairOutcome`; one Bool that meant five things was the item |
+| `RepairLog.repaired(_:success:)` | REFACTOR — takes the outcome; the `success` key is deleted rather than renamed, because no reader could tell which meaning an existing line carried |
+| `RepairLog.rescued(count:)` | REFACTOR — was defined and never called; now records moved against reported |
+| `WindowRescue.rescue(_:)` | REFACTOR — one trip per app instead of per window, waits for reachability, returns the outcome |
+| `WindowRescue.gather(pid:)` | REFACTOR — same wait; its Bool is unchanged, being a different question (did anything visible happen) |
+| the flat `usleep(120_000)` in both | DELETE — measured too short whenever a screenful change is involved |
+| `WindowRescue.bringToFront(pid:)` | KEEP UNCHANGED — still the only activation path; the wait wraps it rather than replacing it |
+| `WindowRescue.axWindows(pid:)` | KEEP AS LEAF — now called by the wait rather than by each caller |
+| `VerdictModel.repair(_:)` | KEEP AS LEAF — passes the outcome to the log; `recheck()` still owns the verdict |
+| `WindowScan.check()` stranded gate | KEEP UNCHANGED — measured: the button works, see above |
+| `WindowUse.Report.canBeMoved` | KEEP UNCHANGED — still gates the edge case only |
+| `ScreenSpace.visiblePart` | KEEP UNCHANGED — see above |
+
+## Verified live, 2026-08-14
+
+- A window at (-12000, 400, 800, 600), reported by the real scan, rescued by the
+  real button from a different screenful, back to (560, 256, 800, 600).
+- Two apps each with a stranded window, rescued in one press from a different
+  screenful, to (560, 256) and (610, 306). Logged as `moved:2 reported:2`.
+- The installed app in `/Applications`, sent a real ⌥⌘R with the person on the
+  same screenful: (-12000, 400, 700, 500) back to (610, 306, 700, 500), and
+  `{"event":"hotkey","movedSomething":true}` in its own log. That also proves
+  the Accessibility grant survived the rebuild and redeploy.
+
+## Deviations
+
+- **The two-app, two-screenful case was not built.** New windows land on the
+  desktop screenful, and the only screenful a script can create without driving
+  Mission Control is a fullscreen one, where a stray window cannot live. So the
+  multi-app rescue was exercised with both apps one screenful away rather than
+  on two different ones. The mechanism is the same wait, measured directly.
+- **`AppleSpacesSwitchOnActivate` was not turned off to test the degraded
+  case.** It is one of the three settings this app exists to protect, on the
+  machine its owner is using. Recorded as an open item with the experiment to
+  run instead.
+
+---
+
 # One author for the verdict
 
 2026-08-14. The repair button could replace a known problem with an unearned

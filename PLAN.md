@@ -66,7 +66,14 @@ app that carries out the repair after the repair call returns.
 | Accessibility (`AXUIElement`) | current Space only | yes |
 
 So: scan with CGWindowList to find what is unreachable, then bring the owning
-app frontmost (which makes its windows visible to AX), then move them with AX.
+app frontmost, then move its windows with AX.
+
+Bringing it forward is not what makes the windows visible to AX — measured
+2026-08-14, AX answers for an app that is not frontmost, provided the window is
+on the current screenful. Activation is what carries the *person* to the
+screenful the window is on, and that takes about a third of a second, during
+which AX returns nothing for that app. So the rescue waits for the windows, not
+for the clock: `WindowRescue.reachableWindows`.
 
 `ScreenSpace` converts every `NSScreen` rectangle and owns rectangle arithmetic.
 `WindowUse` then gives every scan and repair one answer about whether a person
@@ -133,8 +140,11 @@ void. Then it is clamped, with the popover's 13pt shadow taken off first.
 
 ## Known gaps
 
-- Rescue is unverified against a genuinely stranded window (none exist on this
-  machine post-fix).
+- Rescue is verified against a genuinely stranded window, built on purpose
+  (2026-08-14): the installed app, a real ⌥⌘R, and a window brought back from a
+  spot no screen covers. Nothing on this machine strands itself post-fix, so any
+  future check has to build its own case — and must build the stray window LAST,
+  since creating another window after it puts the first out of AX's reach.
 - Fullscreen detection of other apps' windows is unreliable on Tahoe
   (Apple FB18862047) — not currently relied upon.
 - The popover cannot be driven by `System Events` (non-standard window layer),
