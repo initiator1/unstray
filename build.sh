@@ -48,6 +48,8 @@ swiftc -O \
   unstray/Core/Usability.swift \
   unstray/Core/EmptyAppPatience.swift \
   unstray/Core/EmptyAppWatch.swift \
+  unstray/Core/ProblemFate.swift \
+  unstray/Core/OpenProblems.swift \
   unstray/UI/Design.swift \
   unstray/UI/ScreenDiagram.swift \
   unstray/UI/PermissionPanel.swift \

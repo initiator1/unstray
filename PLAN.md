@@ -11,8 +11,10 @@ AppDelegate ──owns──> VerdictModel ──produces──> Verdict ──r
      │                     │                                              │
      │                     ├── SettingsCheck.runAll()  ──> [Finding]      ├─ AllWellPanel
      │                     ├── WindowScan.check*()     ──> Finding?       ├─ ProblemPanel
+     │                     ├── OpenProblems.stillTrue() ─> [Problem.Kind] │
      │                     └── WindowRescue            ──> repairs        └─ PermissionPanel
      │
+     ├── EmptyAppWatch ──records──> OpenProblems ──asks──> VerdictModel.recheck()
      ├── NSStatusItem + NSPopover
      ├── RegisterEventHotKey (⌥⌘R)
      ├── NSWorkspace.didWakeNotification
@@ -46,6 +48,15 @@ Precedence in `recheck()`:
 Settings checks deliberately run without permission. Gating them would mean
 someone who declined never learns their Mac broke something — the same silent
 failure the app exists to correct.
+
+`recheck()` is the single verdict producer. The panel pulls fresh settings and
+window scans. `EmptyAppWatch` pushes observations into `OpenProblems`, which
+re-validates them during the same recheck. A missing permission keeps the last
+honest observation. It never becomes an all-clear that the app did not earn.
+
+Repairs trigger an immediate recheck and one settled recheck after one second.
+The immediate pass keeps a live problem on screen. The settled pass catches an
+app that carries out the repair after the repair call returns.
 
 ## The window problem, and why it takes two APIs
 

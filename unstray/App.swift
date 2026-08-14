@@ -59,8 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Clicking an app IS the request to see it. When one comes forward with
         // nothing to show, fix it without asking; speak only if that fails.
-        emptyAppWatch.onUnfixable = { [weak self] appName, problem in
-            self?.model.showUnusable(appName: appName, problem: problem)
+        emptyAppWatch.onUnfixable = { [weak self] appName, pid, problem in
+            self?.model.noteUnusable(appName: appName, pid: pid, problem: problem)
             self?.showPanel(sticky: true, keepVerdict: true)
         }
         emptyAppWatch.start()
@@ -480,6 +480,9 @@ final class VerdictModel: ObservableObject {
         if permitted, let offEdge = WindowScan.checkOffTheEdge() {
             findings.append(offEdge)
         }
+        for (appName, kind) in OpenProblems.shared.stillTrue() {
+            findings.append(WindowScan.unusable(appName: appName, kind: kind))
+        }
 
         // Note that an update happened, so the panel can mention the timing.
         // Timing only — we cannot know the update caused anything, and claiming
@@ -487,7 +490,10 @@ final class VerdictModel: ObservableObject {
         if followsOSUpdate, !findings.isEmpty {
             for i in findings.indices
             where findings[i].kind != .strandedWindows
-                && findings[i].kind != .windowOffTheEdge {
+                && findings[i].kind != .windowOffTheEdge
+                && findings[i].kind != .appShowsNothing
+                && findings[i].kind != .appNotResponding
+                && findings[i].kind != .titleBarOutOfReach {
                 findings[i].followsOSUpdate = true
             }
         }
@@ -495,7 +501,15 @@ final class VerdictModel: ObservableObject {
         if !findings.isEmpty {
             // A problem we can fix outranks asking for permission — fixing the
             // settings needs no permission, so get on with it.
-            let sorted = findings.sorted { $0.severity < $1.severity }
+            // Two sources can name the same thing. A window the watcher tried
+            // and failed to slide back is recorded here AND found by the scan,
+            // and without this the same problem is counted twice. Findings are
+            // identified by their id, so keep the first of each and let the
+            // ordering above decide which one that is.
+            var alreadyNamed = Set<String>()
+            let sorted = findings
+                .sorted(by: Finding.shownFirst)
+                .filter { alreadyNamed.insert($0.id).inserted }
             verdict = .somethingWrong(primary: sorted[0], alsoFound: Array(sorted.dropFirst()))
             RepairLog.found(sorted)
         } else if !permitted {
@@ -509,18 +523,23 @@ final class VerdictModel: ObservableObject {
         if let reason { RepairLog.write(event: "rechecked", detail: ["reason": reason]) }
     }
 
-    /// Shows whatever we could not fix about the app you just switched to.
-    func showUnusable(appName: String, problem: Usability.Problem) {
-        verdict = .somethingWrong(
-            primary: WindowScan.unusable(appName: appName, problem: problem),
-            alsoFound: []
-        )
+    /// Gives watcher evidence to the one function that owns the verdict.
+    func noteUnusable(appName: String, pid: pid_t, problem: Usability.Problem) {
+        OpenProblems.shared.record(appName: appName, pid: pid, problem: problem)
+        recheck()
     }
 
     func repair(_ f: Finding) {
         let ok = f.repair()
         RepairLog.repaired(f, success: ok)
         recheck()
+        // Some repairs ask another app to act after their call returns. One
+        // settled look confirms the answer after that app has had time to move.
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + EmptyAppWatch.repairSettleDelay
+        ) { [weak self] in
+            self?.recheck()
+        }
     }
 
     // MARK: - Permission

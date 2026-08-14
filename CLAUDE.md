@@ -16,7 +16,7 @@ open build/unstray.app
 ```
 
 ```bash
-./run-tests.sh              # 93 core logic tests, ~1 second
+./run-tests.sh              # 103 core logic tests, ~1 second
 ./build.sh --notarize       # release build; needs the `unstray` keychain profile
 ```
 
@@ -39,6 +39,8 @@ gated.
 ```
 unstray/Core/
   Finding.swift          Finding + Verdict. Every user-facing string lives here.
+  ProblemFate.swift      Is a problem we already reported still true? Pure.
+  OpenProblems.swift     Re-checks problems the watcher has already reported.
   SettingsCheck.swift    The three load-bearing macOS settings.
   ScreenSpace.swift      Converts coordinates and works with rectangles.
   WindowUse.swift        Decides whether a person can use one window where it is.
@@ -155,6 +157,9 @@ All three silently flip during macOS updates. That is the recurring job.
   tells them apart, so every path that accuses an app must consult
   `Usability.isStillStartingUp` and `app.isTerminated` first. This has now been
   got wrong twice, on two different branches of the same switch.
+- **`recheck()` is the only producer of the verdict.** Anything that notices a
+  problem records it and asks `recheck()` to decide what to show. It never writes
+  the verdict itself. Two authors of one verdict caused three separate bugs.
 
 ## House rules that bite here
 

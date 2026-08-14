@@ -7,7 +7,7 @@ import Foundation
 /// key, or a Feedback number — those live in `technicalNote`, which is written to
 /// the log and never shown on screen.
 struct Finding: Identifiable, Equatable {
-    enum Kind: String {
+    enum Kind: String, Comparable {
         case blackDisplays          // spans-displays turned off
         case appsWontComeForward    // AppleSpacesSwitchOnActivate turned off
         case hiddenMinimized        // minimize-to-application turned on
@@ -16,6 +16,26 @@ struct Finding: Identifiable, Equatable {
         case appShowsNothing        // app is open and in front but has no window
         case appNotResponding       // app has stopped answering; cannot be fixed
         case titleBarOutOfReach     // window visible but its top edge is unreachable
+
+        /// This measures how much the problem hurts the person now, not how
+        /// easy it is to fix. A frozen app outranks an off-edge window even
+        /// though unstray cannot repair the frozen app.
+        private var displayOrder: Int {
+            switch self {
+            case .appNotResponding:    return 0
+            case .appShowsNothing:     return 1
+            case .strandedWindows:     return 2
+            case .windowOffTheEdge:    return 3
+            case .titleBarOutOfReach:  return 4
+            case .blackDisplays:       return 5
+            case .appsWontComeForward: return 6
+            case .hiddenMinimized:     return 7
+            }
+        }
+
+        static func < (a: Kind, b: Kind) -> Bool {
+            a.displayOrder < b.displayOrder
+        }
     }
 
     /// How much this is hurting them right now. Order matters: the app shows the
@@ -56,6 +76,13 @@ struct Finding: Identifiable, Equatable {
     let repair: () -> Bool
 
     static func == (a: Finding, b: Finding) -> Bool { a.id == b.id }
+
+    /// A complete order keeps the one shown problem stable across runs.
+    static func shownFirst(_ a: Finding, _ b: Finding) -> Bool {
+        if a.severity != b.severity { return a.severity < b.severity }
+        if a.kind != b.kind { return a.kind < b.kind }
+        return a.id < b.id
+    }
 }
 
 /// The single answer the app gives when it opens.

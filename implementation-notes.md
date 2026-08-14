@@ -1,3 +1,89 @@
+# One author for the verdict
+
+2026-08-14. The repair button could replace a known problem with an unearned
+all-clear.
+
+## What was wrong
+
+The panel pulled settings and window findings into `recheck()`. The watcher
+pushed three other findings straight into `verdict`. A repair then called only
+the pull path. That path could not find the watcher's problem, so it reported
+that all was well while the problem remained.
+
+The same split had already caused two earlier failures. The pull and push paths
+used different window rules and different startup patience.
+
+## The fix
+
+`EmptyAppWatch` now records the app name, pid, and problem category in
+`OpenProblems`. It then asks `recheck()` to decide the verdict. `recheck()`
+re-asks each recorded problem and removes it only when the answer is known.
+
+A failed Accessibility check keeps the last honest problem. A terminated app is
+removed. A relaunch waits for a later pass. A current problem is re-derived, so
+its kind can change when the app's condition changes.
+
+Every repair now gets an immediate recheck and one settled recheck after one
+second. The watcher and the button path share that delay. The immediate pass
+prevents a false all-clear. The settled pass sees repairs that finish after the
+repair call returns.
+
+`Finding.shownFirst` now gives every finding a complete order. Severity wins
+first. Kind wins next. The id breaks the final tie. Arrival order no longer
+changes the one problem shown.
+
+## Deprecation pass
+
+| System | Disposition |
+|---|---|
+| `VerdictModel.showUnusable(appName:problem:)` | REFACTOR — replaced by `noteUnusable(appName:pid:problem:)`, which records evidence and calls `recheck()` |
+| `EmptyAppWatch.onUnfixable` | REFACTOR — now carries the pid that identifies the same process |
+| `VerdictModel.recheck()` | REFACTOR — now owns every runtime verdict decision |
+| `VerdictModel.repair(_:)` | REFACTOR — now adds one settled confirming recheck |
+| `WindowScan.unusable(appName:problem:)` | REFACTOR — now forwards its value-only kind to the one string factory |
+| `EmptyAppWatch` silent repair and patience | KEEP UNCHANGED — still decides when to speak first |
+| `EmptyAppPatience` | KEEP UNCHANGED — still answers whether an app is broken or opening |
+
+## Found during review
+
+- **A fabricated accessibility handle.** The first version rebuilt a
+  `Usability.Problem` by putting `AXUIElementCreateApplication(pid)` into the
+  `window:` slot. It was inert — every repair re-derives the real window before
+  it moves anything — but inert by luck, and the type was lying. `WindowScan`
+  only ever switches on WHICH problem it is, so `Usability.Problem.Kind` now
+  carries that and no fake handle exists.
+- **Two sources can name the same finding.** An off-edge window the watcher
+  tried and failed to slide back is recorded here AND found by
+  `checkOffTheEdge()`, so `recheck()` could hold the same id twice. Findings are
+  deduplicated by id after sorting, so the ordering decides which copy survives.
+- **The test target had swallowed the whole app.** Reaching `fate` pulled in
+  `OpenProblems`, which pulls `Usability`, `WindowScan`, `WindowRescue`,
+  `ActivityWatch`, `RepairLog` and the Carbon shim — three seconds, and code that
+  can move a person's windows one careless line from running in a test. The pure
+  decision moved to `ProblemFate.swift`, the same shape as `EmptyAppPatience`
+  and `PanelPlacement`. The list in `run-tests.sh` is back to seven
+  dependency-free modules and about a second.
+
+## Verified live, 2026-08-14
+
+Calculator, launched and left alone past the startup grace, then `SIGSTOP`ped so
+it genuinely stopped answering. `Usability.problem` returned `.notResponding`.
+The panel said "Calculator has stopped answering." A second re-check — which is
+exactly what the repair button triggers — said it again, where the old code
+would have dropped to "Everything is where it should be". `SIGCONT`, and the
+next look forgot it on its own.
+
+## Deviations
+
+- The brief says `OpenProblems` must store only the app name, pid, and time. It
+  also says a failed check must keep saying the prior problem. Those rules
+  conflict when the live problem cannot be re-derived. The store keeps
+  `Usability.Problem.Kind` as the conservative answer. It never stores an
+  `AXUIElement`. `record` accepts the observed problem so it can keep the exact
+  category that the watcher already stated.
+
+---
+
 # Panel placement — what was actually wrong
 
 2026-08-05. Third attempt at "the panel appears in the wrong place / cut off".

@@ -24,8 +24,12 @@ import ApplicationServices
 final class EmptyAppWatch {
 
     /// Called when an app came forward and we could not make it usable.
-    /// Carries the app's name and what is wrong, so the panel can explain it.
-    var onUnfixable: ((String, Usability.Problem) -> Void)?
+    /// Carries the pid because a name cannot identify the same process later.
+    var onUnfixable: ((String, pid_t, Usability.Problem) -> Void)?
+
+    /// Some repairs return before the app has carried out what they requested.
+    /// The watcher and the button path must allow the same short settle time.
+    static let repairSettleDelay: TimeInterval = 1.0
 
     private var pending: DispatchWorkItem?
 
@@ -184,7 +188,7 @@ final class EmptyAppWatch {
                 RepairLog.write(event: "app_unusable_unfixed",
                                 detail: ["problem": "nothingToShow",
                                          "looks": looksSoFar])
-                self.onUnfixable?(name, .nothingToShow)
+                self.onUnfixable?(name, app.processIdentifier, .nothingToShow)
             }
         }
     }
@@ -214,7 +218,7 @@ final class EmptyAppWatch {
                         == app.processIdentifier else { return }
                 RepairLog.write(event: "app_unusable_unfixed",
                                 detail: ["problem": "notResponding"])
-                self.onUnfixable?(name, .notResponding)
+                self.onUnfixable?(name, app.processIdentifier, .notResponding)
                 return
             }
             self.watchForRecovery(app, name: name, checksLeft: checksLeft - 1)
@@ -225,7 +229,9 @@ final class EmptyAppWatch {
     /// if it did not.
     private func confirm(_ app: NSRunningApplication, name: String,
                          problem: Usability.Problem) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.repairSettleDelay
+        ) { [weak self] in
             guard let self else { return }
 
             // The same two ordinary explanations as everywhere else: it quit, or
@@ -241,7 +247,7 @@ final class EmptyAppWatch {
             if Usability.problem(for: app) != nil {
                 RepairLog.write(event: "app_unusable_unfixed",
                                 detail: ["problem": self.label(problem)])
-                self.onUnfixable?(name, problem)
+                self.onUnfixable?(name, app.processIdentifier, problem)
             } else {
                 RepairLog.write(event: "app_unusable_fixed",
                                 detail: ["problem": self.label(problem)])

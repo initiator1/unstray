@@ -122,6 +122,63 @@ func testSeverityOrder() {
     let sorted = [willBiteLater, nowBroken, willBiteLater].sorted()
     check("a problem happening now outranks one that will bite later",
           sorted.first == nowBroken)
+
+    func finding(_ id: String, _ kind: Finding.Kind,
+                 _ severity: Finding.Severity) -> Finding {
+        Finding(id: id, kind: kind, severity: severity,
+                headline: "", explanation: "", actionLabel: "",
+                costWarning: nil, technicalNote: "", repair: { false })
+    }
+
+    let nothing = finding("nothing", .appShowsNothing, .nowBroken)
+    let titleBar = finding("title", .titleBarOutOfReach, .nowBroken)
+    let firstWinner = [titleBar, nothing].sorted(by: Finding.shownFirst).first?.kind
+    let secondWinner = [nothing, titleBar].sorted(by: Finding.shownFirst).first?.kind
+    check("equal-severity findings have one arrival-independent winner",
+          firstWinner == .appShowsNothing && secondWinner == firstWinner)
+
+    let frozen = finding("frozen", .appNotResponding, .nowBroken)
+    let offEdge = finding("edge", .windowOffTheEdge, .nowBroken)
+    check("a frozen app outranks a window off an edge",
+          [offEdge, frozen].sorted(by: Finding.shownFirst).first?.kind
+              == .appNotResponding)
+
+    let brokenLaterKind = finding("now", .hiddenMinimized, .nowBroken)
+    let futureWorstKind = finding("later", .appNotResponding, .willBiteLater)
+    check("current harm outranks future harm despite kind order",
+          [futureWorstKind, brokenLaterKind]
+              .sorted(by: Finding.shownFirst).first?.id == "now")
+}
+
+// MARK: - What happens to a problem already said out loud
+//
+// A failed second look must never become an unearned all-clear. This decision
+// stays pure so every precedence rule can be checked without a running app.
+
+func testOpenProblemFate() {
+    print("\nopen problem fate")
+
+    check("a terminated app is forgotten",
+          ProblemFate.of(terminated: true, stillStartingUp: false,
+                            couldCheck: true, problemNow: true) == .forget)
+    check("a failed check keeps a problem that now looks gone",
+          ProblemFate.of(terminated: false, stillStartingUp: false,
+                            couldCheck: false, problemNow: false) == .keepSaying)
+    check("termination outranks a failed check",
+          ProblemFate.of(terminated: true, stillStartingUp: false,
+                            couldCheck: false, problemNow: true) == .forget)
+    check("a starting app waits without being said or forgotten",
+          ProblemFate.of(terminated: false, stillStartingUp: true,
+                            couldCheck: true, problemNow: true) == .waitAndSeeAgain)
+    check("a failed check outranks waiting for startup",
+          ProblemFate.of(terminated: false, stillStartingUp: true,
+                            couldCheck: false, problemNow: false) == .keepSaying)
+    check("a checked problem that is gone is forgotten",
+          ProblemFate.of(terminated: false, stillStartingUp: false,
+                            couldCheck: true, problemNow: false) == .forget)
+    check("a checked problem that remains is still said",
+          ProblemFate.of(terminated: false, stillStartingUp: false,
+                            couldCheck: true, problemNow: true) == .keepSaying)
 }
 
 // MARK: - Has macOS changed under us
@@ -750,6 +807,7 @@ testReachability()
 testWindowFiltering()
 testSettings()
 testSeverityOrder()
+testOpenProblemFate()
 testVersionDrift()
 testHeadlines()
 testDiagram()

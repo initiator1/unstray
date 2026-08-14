@@ -17,7 +17,14 @@ enum WindowScan {
     /// The message for whatever we could not fix. One place, so every one of
     /// these passes the same read-aloud test.
     static func unusable(appName: String, problem: Usability.Problem) -> Finding {
-        switch problem {
+        unusable(appName: appName, kind: problem.kind)
+    }
+
+    /// Message selection needs no live window, so handles stay inside Usability
+    /// and cannot outlive the window they describe.
+    static func unusable(appName: String,
+                         kind: Usability.Problem.Kind) -> Finding {
+        switch kind {
         case .notResponding:  return appNotResponding(appName: appName)
         case .hidden,
              .nothingToShow:  return appShowsNothing(appName: appName)

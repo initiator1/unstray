@@ -238,3 +238,27 @@ enum Usability {
         return AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, v) == .success
     }
 }
+
+extension Usability.Problem {
+    /// The same five answers with nothing attached, for the places that only
+    /// need to know which problem it is. An `AXUIElement` is a live handle to a
+    /// window that may already be gone, so it must never be stored or carried
+    /// anywhere the window itself is not.
+    enum Kind: Equatable {
+        case hidden
+        case notResponding
+        case titleBarOutOfReach
+        case pushedOffTheEdge
+        case nothingToShow
+    }
+
+    var kind: Kind {
+        switch self {
+        case .hidden:             return .hidden
+        case .notResponding:      return .notResponding
+        case .titleBarOutOfReach: return .titleBarOutOfReach
+        case .pushedOffTheEdge:   return .pushedOffTheEdge
+        case .nothingToShow:      return .nothingToShow
+        }
+    }
+}

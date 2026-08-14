@@ -3,42 +3,16 @@
 Things known to be unfinished or unwatched. Add a date and enough context to act
 without the conversation that found it.
 
-## Pressing the button can say "all well" without checking
+## A true problem can keep moment-specific wording for too long
 
-2026-08-14. `VerdictModel.repair` calls `recheck()` straight after a repair, which
-looks right. But `recheck()` only ever builds findings from three sources: the
-settings checks, `WindowScan.check()`, and `WindowScan.checkOffTheEdge()`.
+2026-08-14. A recorded problem stays until the app is fixed or quits. The panel
+can therefore say "You clicked Chrome and nothing came up" long after that click.
+The condition remains true, but the sentence describes a moment that has passed.
 
-Three findings do not come from there. `appShowsNothing`, `appNotResponding` and
-`titleBarOutOfReach` are only ever produced by `EmptyAppWatch` through
-`showUnusable`. So for those three, the check that runs after the repair
-structurally cannot find the problem again, finds nothing, and settles on
-`.allWell` — "Everything is where it should be."
-
-Press "Show me how to force it to quit" on a frozen app and the panel opens
-Activity Monitor and then reports everything is fine. The app is still frozen.
-That is this app's founding failure, committed by this app.
-
-Two things are wrong and they need different fixes:
-
-1. **A verdict that cannot be re-derived must not be silently dropped.** Either
-   `recheck()` learns to re-ask `Usability.problem` for the app a finding names,
-   or the panel keeps the finding until something actually disproves it. The
-   second is safer: never replace a stated problem with an all-clear that was not
-   earned.
-2. **The re-check has no patience, and the app already owns the fix.**
-   `EmptyAppPatience` waits up to ~18.7s and rules out "quit", "still starting"
-   and "person moved on" before speaking, and `EmptyAppWatch.confirm` waits 1.0s.
-   The button path waits zero. The same question gets two different answers
-   depending on which way the person reached it. Wire the button path through the
-   patience that is already written and already tested.
-
-Also worth cleaning up while in there: the `Bool` each repair closure returns
-means something different in each one — "AX accepted a position", "an Apple event
-was delivered", and in `appNotResponding` simply "I opened Activity Monitor",
-which is hardcoded `true` and repairs nothing. It reaches no UI, so this is not a
-lie on screen, but it is written to the log as `success`, and the log is what
-future diagnosis reads.
+No expiry was added. A timer could drop a true problem and restore the false
+all-clear this design removes. The product needs either a staleness limit or new
+wording for these three findings that does not imply a recent click. Copy is
+Douglas's call.
 
 ## The stranded scan can still offer a button that does nothing
 
