@@ -70,6 +70,32 @@ enum WindowRescue {
         return wins
     }
 
+    /// Brings an app forward and waits until the accessibility layer can really
+    /// reach its windows, rather than for a fixed length of time.
+    ///
+    /// Bringing an app forward can move the person to another screenful, and
+    /// until that move finishes the accessibility layer returns nothing at all
+    /// for that app. Measured on 2026-08-14 against a window one screenful away:
+    /// it first answered at 350ms, and in five runs out of five the 120ms this
+    /// code used to wait saw no windows whatsoever, while a further 148–498ms
+    /// saw the window every time.
+    ///
+    /// A fixed wait is therefore a race, and losing it looks like nothing at
+    /// all: the loop finds no windows, moves nothing, and says nothing. That is
+    /// how a three-app rescue once moved two and left the third.
+    private static func reachableWindows(pid: pid_t) -> [AXUIElement] {
+        bringToFront(pid: pid)
+        // Long enough for a screenful change on this Mac with room to spare,
+        // short enough that a person pressing a button does not think it failed.
+        let deadline = Date().addingTimeInterval(1.5)
+        while true {
+            let wins = axWindows(pid)
+            if !wins.isEmpty { return wins }
+            if Date() >= deadline { return [] }
+            usleep(50_000)
+        }
+    }
+
     private static func frame(of win: AXUIElement) -> CGRect? {
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
@@ -126,28 +152,35 @@ enum WindowRescue {
         guard !screens.isEmpty, !usableScreens.isEmpty else { return .failed }
         var moved = 0
 
-        for item in items {
-            // The app has to be frontmost for its things to become visible to
-            // the accessibility layer at all.
-            bringToFront(pid: item.pid)
-            usleep(120_000)
+        // One trip per app, not per window. Bringing an app forward is the
+        // expensive part — it can carry the person to another screenful — and
+        // doing it again for a second window of the same app paid that price
+        // twice for nothing.
+        for pid in orderedPIDs(of: items) {
+            let mine = items.filter { $0.pid == pid }
+            let reasons = Set(mine.map { $0.reason })
+            guard let target = mine.first?.rescueTarget else { continue }
 
-            for win in axWindows(item.pid) {
+            for win in reachableWindows(pid: pid) {
                 if isMinimized(win) { unminimize(win) }
                 guard let f = frame(of: win) else { continue }
-                // AX returns only the current screenful, so this window can be
-                // moved. The button also names the app, so the lower floor fits.
+                // The accessibility layer answered, so this window is on the
+                // screenful in front of the person and can be moved. The button
+                // names the app, so the lower floor fits.
                 let report = WindowUse.judge(f, onThisScreenful: true,
                                              screens: screens,
                                              scope: .oneChosenApp)
+                // Judged fresh, and acted on only for the trouble this app was
+                // actually reported for. A window that has since been fixed, or
+                // one with a different problem, is left where the person put it.
                 let destination: CGPoint
-                switch (item.reason, report.verdict) {
-                case (.strandedOffEveryScreen, .lostOffEveryScreen):
-                    destination = placeInside(f.size, screen: item.rescueTarget)
+                switch report.verdict {
+                case .lostOffEveryScreen where reasons.contains(.strandedOffEveryScreen):
+                    destination = placeInside(f.size, screen: target)
 
-                case (.pushedPastTheEdge, .pushedPastTheEdge):
+                case .pushedPastTheEdge where reasons.contains(.pushedPastTheEdge):
                     destination = ScreenSpace.slideIntoView(
-                        f, screens: usableScreens, preferred: item.rescueTarget)
+                        f, screens: usableScreens, preferred: target)
 
                 default:
                     continue
@@ -161,6 +194,12 @@ enum WindowRescue {
         // diagnosis needs to see which one fell short.
         RepairLog.rescued(moved: moved, reported: items.count)
         return moved > 0 ? .changed : .failed
+    }
+
+    /// Every app named in the list, once each, in the order they were found.
+    private static func orderedPIDs(of items: [WindowScan.OutOfReach]) -> [pid_t] {
+        var seen = Set<pid_t>()
+        return items.map { $0.pid }.filter { seen.insert($0).inserted }
     }
 
     /// The hotkey action: gather everything belonging to the app you are trying
@@ -197,16 +236,14 @@ enum WindowRescue {
             app.unhide()
         }
 
-        bringToFront(pid: pid)
-        usleep(120_000)
-
+        let windows = reachableWindows(pid: pid)
         let target = WindowScan.screenUnderCursor()
         let screens = ScreenSpace.screens()
         let usableScreens = ScreenSpace.usableScreens()
         guard !target.isNull, !screens.isEmpty, !usableScreens.isEmpty else { return false }
         var didSomething = false
 
-        for win in axWindows(pid) {
+        for win in windows {
             if isMinimized(win) {
                 unminimize(win)
                 didSomething = true
