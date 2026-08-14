@@ -88,9 +88,21 @@ All three silently flip during macOS updates. That is the recurring job.
 
 - **Swift cannot import `SetFrontProcessWithOptions`.** Pre-10.9 Carbon symbols
   are unavailable to Swift entirely, not merely deprecated. Hence the C shim.
-  Do not "modernise" it: `NSRunningApplication.activate` silently fails from a
-  background app (Apple's FB21087054) and `.activateAllWindows` has been broken
-  since 10.15 (Apple's FB11974786).
+  Do not "modernise" it. Three measured reasons, not one:
+  `NSRunningApplication.activate` silently fails from a background app (Apple's
+  FB21087054); `.activateAllWindows` has been broken since 10.15 (Apple's
+  FB11974786); and — measured 2026-08-14 — **the Carbon call ignores
+  `AppleSpacesSwitchOnActivate`, while the modern call obeys it.** With that
+  setting off, modern activation left us behind (never carried, 2s), and the
+  Carbon path carried us over in 382ms and completed the rescue. So the rescue
+  keeps working on a Mac whose settings are in the exact broken state this app
+  exists to report. Swapping in the modern call would silently couple the fix
+  to the bug.
+- **Writing `AppleSpacesSwitchOnActivate` takes effect at once.** No logout, no
+  Dock restart — measured in both directions on 2026-08-14 with nothing
+  restarted. So `checkAppsWontComeForward`'s `costWarning: nil` is honest, and
+  its repair really is done when the button returns. Do not add a logout warning
+  to it by analogy with `spans-displays`, which genuinely needs one.
 - **AX sees only the current Space; CGWindowList sees all Spaces but cannot
   move anything.** Any real work needs both, correlated.
 - **Window and screen rectangles use opposite vertical coordinates.**

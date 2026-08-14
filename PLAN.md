@@ -93,6 +93,12 @@ but **not private** — no SIP, no boot-args, no scripting addition — so it sh
 survive OS updates. Swift refuses to import pre-10.9 Carbon symbols, hence
 `LegacyActivation.c`. The modern call remains as a fallback.
 
+It does a third thing the modern call does not, measured 2026-08-14: it carries
+the person to another screenful even when `AppleSpacesSwitchOnActivate` is off,
+which the modern call will not do. That setting is one of the three unstray
+watches, so the rescue has to work while it is wrong — otherwise the repair for
+the symptom would be disabled by the very fault the app is reporting.
+
 ## When it looks
 
 | Trigger | Why |

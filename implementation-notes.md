@@ -47,11 +47,45 @@ the screen while a fullscreen window held the display.
 So the scan is right to report it, and gating it on `kCGWindowIsOnscreen` would
 have hidden a problem this app can fix. What was actually wrong was the wait.
 
-Not measured, and worth knowing: this depends on activation switching
-screenfuls, which is exactly what `AppleSpacesSwitchOnActivate` controls — one
-of the three settings unstray watches. All three read correctly on this Mac, so
-the measurement says nothing about the machine where that setting is off. Left
-in `OPEN-ITEMS.md` rather than guessed at.
+## The rescue is immune to the setting it depends on
+
+That raised a worry: the rescue leans on activation switching screenfuls, which
+is exactly what `AppleSpacesSwitchOnActivate` controls — one of the three
+settings unstray watches. If the rescue needed that setting to be right, then
+the repair for the symptom would be disabled by the fault being reported.
+
+Measured on 2026-08-14, with Douglas's agreement to turn the setting off for a
+few minutes. Every run restored it through a shell trap, so an error could not
+leave it wrong.
+
+**The rescue does not care.** With the setting off, the real "Bring it back"
+button carried the person to the window's screenful in 382ms and brought the
+window from x = -12000 back to the middle of the screen. Same with the Dock
+restarted, in case the write had not been re-read: 383ms.
+
+A result like that is worthless without knowing the setting was in force, so a
+control was built. It takes a screenful of its own by going fullscreen — which
+makes it frontmost, the state macOS's cooperative activation requires of a
+caller — and then activates the target the MODERN way, which is the path the
+setting governs.
+
+| Setting | Modern `NSRunningApplication.activate` | Carbon `SetFrontProcessWithOptions` |
+|---|---|---|
+| on | carried over after 445ms | carried over after 350ms |
+| off | **never carried** (2s) | carried over after 382ms |
+
+So the setting is real and in force, and the Carbon shim ignores it. That is a
+third measured reason not to "modernise" `LegacyActivation.c`, alongside the two
+Apple bugs already recorded. The open item is closed: no ordering change is
+needed, because the button works either way.
+
+**A shipped promise, checked while the switch was in hand.** unstray's repair for
+this setting writes it and does nothing else, and the panel offers no cost
+warning — so if a write alone were not enough, that button would be a lie under
+the app's own rule about never promising what it cannot do. Written off with
+nothing restarted: not carried. Written back on with nothing restarted: carried,
+455ms. The write takes effect at once in both directions. The button is honest,
+and now verified rather than assumed.
 
 ## The gap between two screens: no change, on purpose
 
