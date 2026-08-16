@@ -22,7 +22,7 @@ of the three findings read as dated, so he decides which need a second version:
 | Finding | What it says now | Reads as |
 |---|---|---|
 | `appShowsNothing` | "You clicked \<app\> and nothing came up." plus "I asked it to open one and it did not answer." | dated — a click, and a request, that both happened at a moment |
-| `appNotResponding` | "\<app\> has stopped answering." | mildly dated — "has stopped" implies it just happened |
+| `appNotResponding` | "\<app\> has stopped answering." plus "It usually recovers on its own within a minute." | the second line is the urgent one — after an hour it is not stale but **false**, telling him to wait a minute for a recovery that already failed for sixty |
 | `titleBarOutOfReach` | "You can see \<app\>, but you cannot move it." | fine at any age; probably needs nothing |
 
 The machinery is small and the wording is the only blocker. The age is already
