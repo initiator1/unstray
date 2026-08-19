@@ -84,6 +84,7 @@ struct VerdictView: View {
                 Text("unstray \(Bundle.main.shortVersion)")
                     .font(D.label(11))
                     .foregroundStyle(D.inkFaint)
+                if showsSupportLink { SupportLink() }
                 Spacer()
                 Button("Quit", action: onQuit)
                     .buttonStyle(.plain)
@@ -95,6 +96,36 @@ struct VerdictView: View {
         }
         .frame(width: D.panelWidth)
         .background(D.bg)
+    }
+
+    /// The support link shows only on the all-clear panel.
+    ///
+    /// The other two panels are in the middle of asking for something — the
+    /// permission to work at all, or one press to put right what is broken.
+    /// A link about money beside either of those reads as a price on the fix,
+    /// and the permission panel spends its whole height earning trust it
+    /// cannot afford to spend. The all-clear panel asks for nothing, and it is
+    /// the one a person sees almost every time.
+    private var showsSupportLink: Bool {
+        if case .allWell = verdict { return true }
+        return false
+    }
+}
+
+/// The only place the app asks for anything.
+///
+/// unstray is free and stays free, so this is a plain link and never a button.
+/// A button is the thing to do; this is not. It carries no colour, so it never
+/// competes with the answer above it, and it is underlined because at this size
+/// nothing else marks it as something you may press.
+private struct SupportLink: View {
+    var body: some View {
+        Link("Buy me a coffee",
+             destination: URL(string: "https://ko-fi.com/initiatorworks")!)
+            .font(D.label(11))
+            .foregroundStyle(D.inkFaint)
+            .underline()
+            .help("Opens ko-fi.com in your browser. Entirely optional.")
     }
 }
 

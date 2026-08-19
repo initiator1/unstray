@@ -31,3 +31,26 @@ is the single place every one of these strings is built, so the switch belongs
 there and nowhere else. Not built yet: a mechanism with placeholder sentences in
 it would be a stub, and this repo does not ship those.
 
+
+## The GitHub Sponsors link in the README was dead
+
+2026-08-19. The Support section pointed at `github.com/sponsors/initiator1`.
+That page does not exist — GitHub Sponsors is not switched on for the account,
+so the URL silently redirects to the profile page. It has been replaced with
+`ko-fi.com/initiatorworks`, which was opened in a browser the same day and
+renders "Buy Douglas a Coffee".
+
+Two things follow, and neither is done:
+
+- **Check the same link in the other repos.** Any README or site that offers
+  GitHub Sponsors for `initiator1` has the same dead destination.
+- **Decide whether to switch GitHub Sponsors on at all.** Ko-fi now collects
+  for four apps. A second, empty donation route only creates more links to
+  check. Douglas's call.
+
+## The Ko-fi link ships only when unstray is next built for release
+
+2026-08-19. The link is on `main` and verified in a local build. The copy in
+`/Applications` is the notarized v0.1 and does not have it. Local builds are
+not notarized, so that copy was deliberately left alone. Whoever cuts the next
+release picks the link up with it.
