@@ -189,6 +189,16 @@ All three silently flip during macOS updates. That is the recurring job.
   tells them apart, so every path that accuses an app must consult
   `Usability.isStillStartingUp` and `app.isTerminated` first. This has now been
   got wrong twice, on two different branches of the same switch.
+- **The money link never shares a panel with a problem.** The support link sits
+  in the footer and is drawn only for the all-clear verdict. On the problem
+  panel it would read as a price on the repair, and the permission panel is
+  spending its whole height earning trust. `VerdictView.showsSupportLink` is
+  the one place that decides this.
+- **A payment link must be opened and seen before it ships.** The destination is
+  `https://ko-fi.com/initiatorworks`, checked live on 2026-08-19 — it renders
+  "Buy Douglas a Coffee". The earlier `ko-fi.com/initiator1` never existed and
+  shipped dead inside another app. `curl` is not the check: Ko-fi answers 403
+  to it from Cloudflare whether the page exists or not. Load it in a browser.
 - **`recheck()` is the only producer of the verdict.** Anything that notices a
   problem records it and asks `recheck()` to decide what to show. It never writes
   the verdict itself. Two authors of one verdict caused three separate bugs.
