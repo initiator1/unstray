@@ -195,10 +195,16 @@ All three silently flip during macOS updates. That is the recurring job.
   spending its whole height earning trust. `VerdictView.showsSupportLink` is
   the one place that decides this.
 - **A payment link must be opened and seen before it ships.** The destination is
-  `https://ko-fi.com/initiatorworks`, checked live on 2026-08-19 — it renders
-  "Buy Douglas a Coffee". The earlier `ko-fi.com/initiator1` never existed and
-  shipped dead inside another app. `curl` is not the check: Ko-fi answers 403
-  to it from Cloudflare whether the page exists or not. Load it in a browser.
+  `https://ko-fi.com/initiatorworks?app=unstray`, checked live on 2026-08-20 —
+  it renders "Buy Douglas a Coffee" with the tip form. The earlier
+  `ko-fi.com/initiator1` never existed and shipped dead inside another app.
+  `curl` is not the check: Ko-fi answers 403 to it from Cloudflare whether the
+  page exists or not. Load it in a browser.
+- **`app=unstray` is the same in every link in this repo.** One Ko-fi page
+  collects for four apps and cannot otherwise tell which one sent a visitor.
+  A second spelling in a second file makes the counts wrong rather than absent,
+  so change every link together or none. Nothing reads this yet: Ko-fi exposes
+  it only through Google Analytics 4, which needs a paid Contributor account.
 - **`recheck()` is the only producer of the verdict.** Anything that notices a
   problem records it and asks `recheck()` to decide what to show. It never writes
   the verdict itself. Two authors of one verdict caused three separate bugs.
