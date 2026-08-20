@@ -41,9 +41,16 @@ repo page shows no Sponsor button and no "Sponsor this project" panel, checked
 logged-out the same day. A control repo with the feature on renders both.
 
 **Cause: the repo's own Sponsorships feature is off** — Settings > General >
-Features. With it off GitHub registers the funding link and displays nothing.
+Features. With it off GitHub records the funding link and displays nothing.
 No error, no 404. That is the third shape of this same failure in one week,
 after `ko-fi.com/initiator1` and `github: initiator1`.
+
+Recording and displaying are two separate layers, and only the second depends
+on that checkbox. Measured across all four repos the same day: unstray and
+redbuttonquit both return their tagged Ko-fi URL from `fundingLinks` while
+neither renders a button. So a populated `fundingLinks` proves the file is
+right and proves nothing about whether anyone can see it. Check the public
+page logged out before claiming a button exists.
 
 **Only Douglas can fix it, and only in a browser.** The repo REST object has no
 sponsorships field, so no agent can set it. One checkbox, once per repo.
