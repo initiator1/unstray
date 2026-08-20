@@ -32,6 +32,23 @@ there and nowhere else. Not built yet: a mechanism with placeholder sentences in
 it would be a stub, and this repo does not ship those.
 
 
+## The changelog does not describe the next release
+
+2026-08-20. Sixty-nine commits sit between the v0.1 tag and `main`, and about
+twenty of them change what a person sees: headless browsers no longer accused,
+starting apps no longer accused, windows with an unusable sliver now rescued,
+hidden and frozen windows handled, the panel no longer cropped at a screen
+edge, and several strings rewritten to stop predicting symptoms nobody has.
+
+**The Unreleased section lists one of them — the coffee link.** Anyone reading
+the changelog would think the next version is a donate button. This is the
+main thing standing between now and a release build, and it is writing, not
+engineering. The commit subjects are already in the plain voice and are a
+usable draft source: `git log v0.1..main`.
+
+Also needs deciding at the same time: the version number. `Info.plist` still
+says 0.1, and the size of this diff argues for 0.2 rather than 0.1.1.
+
 ## The GitHub Sponsors link in the README was dead
 
 2026-08-19. The Support section pointed at `github.com/sponsors/initiator1`.
