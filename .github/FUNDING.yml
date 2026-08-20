@@ -1,3 +1,10 @@
-# Shows a "Sponsor" button on the repo once the account exists.
-# Inert until then — GitHub simply omits the button, no broken link.
-github: initiator1
+# Puts a "Sponsor" button on the GitHub repo page.
+#
+# This was `github: initiator1` — GitHub Sponsors is not switched on for that
+# account, so GitHub simply omitted the button and the repo asked for nothing.
+# Ko-fi is live, so the button now appears and goes somewhere real.
+#
+# `custom` rather than `ko_fi:` on purpose: the `ko_fi:` field takes a username
+# only and drops the query string, and `?app=unstray` is how one page serving
+# four apps tells which one sent the person.
+custom: https://ko-fi.com/initiatorworks?app=unstray

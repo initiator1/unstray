@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.1 — unreleased
+## Unreleased
+
+- A "Buy me a coffee" link in the panel footer, shown only when nothing is
+  wrong. It goes to ko-fi.com/initiatorworks. The app stays free.
+
+## 0.1 — 2026-07-28
 
 First public version.
 
@@ -16,5 +21,3 @@ First public version.
 - Checks again by itself after a macOS update, since a major upgrade or a
   migration is a sensible moment to look.
 - Lives in the menu bar, starts with your Mac, and stays quiet until needed.
-- A "Buy me a coffee" link in the panel footer, shown only when nothing is
-  wrong. It goes to ko-fi.com/initiatorworks. The app stays free.
