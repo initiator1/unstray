@@ -32,6 +32,25 @@ there and nowhere else. Not built yet: a mechanism with placeholder sentences in
 it would be a stub, and this repo does not ship those.
 
 
+## The repo's Sponsor button is configured and still does not render
+
+2026-08-20. `.github/FUNDING.yml` is correct and GitHub has parsed it —
+`gh api graphql -f query='{ repository(owner:"initiator1", name:"unstray")
+{ fundingLinks { platform url } } }'` returns the Ko-fi URL. Yet the public
+repo page shows no Sponsor button and no "Sponsor this project" panel, checked
+logged-out the same day. A control repo with the feature on renders both.
+
+**Cause: the repo's own Sponsorships feature is off** — Settings > General >
+Features. With it off GitHub registers the funding link and displays nothing.
+No error, no 404. That is the third shape of this same failure in one week,
+after `ko-fi.com/initiator1` and `github: initiator1`.
+
+**Only Douglas can fix it, and only in a browser.** The repo REST object has no
+sponsorships field, so no agent can set it. One checkbox, once per repo.
+
+Do not describe the Sponsor button as shipped until that box is ticked and the
+button is seen on the public page.
+
 ## The changelog does not describe the next release
 
 2026-08-20. Sixty-nine commits sit between the v0.1 tag and `main`, and about

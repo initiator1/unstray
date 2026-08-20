@@ -1,10 +1,16 @@
-# Puts a "Sponsor" button on the GitHub repo page.
+# The destination GitHub uses for this repo's "Sponsor" button.
 #
 # This was `github: initiator1` — GitHub Sponsors is not switched on for that
-# account, so GitHub simply omitted the button and the repo asked for nothing.
-# Ko-fi is live, so the button now appears and goes somewhere real.
+# account, so GitHub ignored the key and the repo asked for nothing.
 #
 # `custom` rather than `ko_fi:` on purpose: the `ko_fi:` field takes a username
 # only and drops the query string, and `?app=unstray` is how one page serving
 # four apps tells which one sent the person.
+#
+# NOTE, 2026-08-20: this file is correct and GitHub has parsed it — the GraphQL
+# `fundingLinks` field returns this URL. **No button renders yet.** The repo's
+# own Sponsorships feature is off (Settings > General > Features), and with it
+# off GitHub accepts the funding link and displays nothing. Same silent shape
+# as the `github:` key it replaced. Only Douglas can switch it on; there is no
+# API for that checkbox.
 custom: https://ko-fi.com/initiatorworks?app=unstray
