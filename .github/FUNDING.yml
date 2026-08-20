@@ -7,10 +7,9 @@
 # only and drops the query string, and `?app=unstray` is how one page serving
 # four apps tells which one sent the person.
 #
-# NOTE, 2026-08-20: this file is correct and GitHub has parsed it — the GraphQL
-# `fundingLinks` field returns this URL. **No button renders yet.** The repo's
-# own Sponsorships feature is off (Settings > General > Features), and with it
-# off GitHub accepts the funding link and displays nothing. Same silent shape
-# as the `github:` key it replaced. Only Douglas can switch it on; there is no
-# API for that checkbox.
+# NOTE, 2026-08-20: the Sponsor button needs BOTH halves — a funding link
+# GitHub has recorded AND the repo's own Sponsorships feature ticked on in
+# Settings > General > Features. Either half alone renders nothing and errors
+# nothing. Both are now in place: the public page shows "Sponsor this project"
+# linking to the URL below, verified logged out. Do not remove either half.
 custom: https://ko-fi.com/initiatorworks?app=unstray

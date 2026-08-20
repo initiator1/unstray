@@ -32,39 +32,35 @@ there and nowhere else. Not built yet: a mechanism with placeholder sentences in
 it would be a stub, and this repo does not ship those.
 
 
-## The repo's Sponsor button is configured and still does not render
+## The Sponsor button needs two halves, and both are silent when missing
 
-2026-08-20. `.github/FUNDING.yml` is correct and GitHub has parsed it —
-`gh api graphql -f query='{ repository(owner:"initiator1", name:"unstray")
-{ fundingLinks { platform url } } }'` returns the Ko-fi URL. Yet the public
-repo page shows no Sponsor button and no "Sponsor this project" panel, checked
-logged-out the same day. A control repo with the feature on renders both.
+2026-08-20, **resolved the same day.** The button on a GitHub repo page needs a
+funding link GitHub has recorded AND the repo's own Sponsorships feature ticked
+on, in Settings > General > Features. Either half alone renders nothing and
+errors nothing. Douglas ticked the box; the public page now shows "Sponsor this
+project" linking to `https://ko-fi.com/initiatorworks?app=unstray`, verified
+logged out.
 
-**Cause: the repo's own Sponsorships feature is off** — Settings > General >
-Features. With it off GitHub records the funding link and displays nothing.
-No error, no 404. That is the third shape of this same failure in one week,
-after `ko-fi.com/initiator1` and `github: initiator1`.
+That was the third shape of one failure in a week, after `ko-fi.com/initiator1`
+and the inert `github: initiator1` key. Kept here because the next agent will
+otherwise re-derive it: **a populated `fundingLinks` is not evidence a visitor
+sees anything.** Check the public page.
+
+Two facts about checking, which differ by host and cost an hour to rediscover:
+
+- **GitHub pages: `curl` works.** `curl -sL <repo-url> | grep -i "sponsor this
+  project"` is a reliable test.
+- **Ko-fi pages: `curl` is useless.** Cloudflare answers 403 whether the page
+  exists or not, so a dead link passes a scripted check. Use a browser, and
+  confirm the tip form renders rather than matching the page title.
 
 A newly added FUNDING.yml is not recorded straight away, so an empty
-`fundingLinks` does not mean the file is wrong. Measured across the four repos
-on 2026-08-20, the split is by when the file was **first added**, not when it
-was last changed: unstray (added 2026-07-28) and redbuttonquit (added
-2026-08-12) are both recorded, while portmanager and timeannouncer, both added
-that morning, were still empty four hours later. Do not "fix" a correct file
-because the API has not caught up with it.
-
-Recording and displaying are two separate layers, and only the second depends
-on that checkbox. Measured across all four repos the same day: unstray and
-redbuttonquit both return their tagged Ko-fi URL from `fundingLinks` while
-neither renders a button. So a populated `fundingLinks` proves the file is
-right and proves nothing about whether anyone can see it. Check the public
-page logged out before claiming a button exists.
-
-**Only Douglas can fix it, and only in a browser.** The repo REST object has no
-sponsorships field, so no agent can set it. One checkbox, once per repo.
-
-Do not describe the Sponsor button as shipped until that box is ticked and the
-button is seen on the public page.
+`fundingLinks` does not mean the file is wrong. The split across the four repos
+went by when the file was **first added**, not last changed: unstray
+(2026-07-28) and redbuttonquit (2026-08-12) were recorded, while portmanager
+and timeannouncer, both added that morning, were still empty four hours later
+with correct files in place. Do not "fix" a correct file because the API has
+not caught up.
 
 ## The changelog does not describe the next release
 
