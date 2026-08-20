@@ -45,6 +45,14 @@ Features. With it off GitHub records the funding link and displays nothing.
 No error, no 404. That is the third shape of this same failure in one week,
 after `ko-fi.com/initiator1` and `github: initiator1`.
 
+A newly added FUNDING.yml is not recorded straight away, so an empty
+`fundingLinks` does not mean the file is wrong. Measured across the four repos
+on 2026-08-20, the split is by when the file was **first added**, not when it
+was last changed: unstray (added 2026-07-28) and redbuttonquit (added
+2026-08-12) are both recorded, while portmanager and timeannouncer, both added
+that morning, were still empty four hours later. Do not "fix" a correct file
+because the API has not caught up with it.
+
 Recording and displaying are two separate layers, and only the second depends
 on that checkbox. Measured across all four repos the same day: unstray and
 redbuttonquit both return their tagged Ko-fi URL from `fundingLinks` while
