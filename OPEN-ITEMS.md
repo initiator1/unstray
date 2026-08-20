@@ -53,9 +53,27 @@ Two things follow, and neither is done:
 2026-08-20. Every Ko-fi link in this repo carries `?app=unstray`, so the one
 page can tell which of the four apps sent a visitor. **Nobody can read that
 today.** Ko-fi exposes the parameter only through its Google Analytics 4
-integration, and that integration needs a paid Ko-fi Contributor account. The
-tag costs nothing and starts working the day Douglas connects GA4. Until then
-do not report click counts from it — there are none to report.
+integration. Until Douglas connects GA4 there are no click counts to report —
+none, not few.
+
+**Correction, same day.** This entry first said GA4 "needs a paid Ko-fi
+Contributor account", which was repeated from another session and is wrong.
+Checked live on ko-fi.com and help.ko-fi.com on 2026-08-20:
+
+- **Contributor is not a subscription and has no fixed price.** It is a toggle
+  in Settings → Payment that shares **5% of tip income** with Ko-fi. Five
+  percent of nothing is nothing. It can be switched off at any time.
+- Contributor is what unlocks Google Analytics, along with supporter-only
+  content, scheduled posts, a shorter page name and a custom theme colour.
+- With Contributor off, tips carry a **0%** service fee, which is why it was
+  deliberately left off. Memberships, shop sales and commissions are 5%
+  regardless.
+- **Ko-fi Gold is the paid tier: $12/month for 0% on everything.** It only
+  pays for itself above roughly $240/month in tips. Ko-fi's own page now says
+  "You no longer need Ko-fi Gold."
+
+So the real question is not what to spend. It is whether 5% of future tips is
+worth per-app attribution, and it is reversible either way.
 
 The value is `unstray` and it must stay that in every file. RedButtonQuit,
 Time Announcer and Portmanager carry their own names the same way.
