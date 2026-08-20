@@ -118,10 +118,14 @@ struct VerdictView: View {
 /// A button is the thing to do; this is not. It carries no colour, so it never
 /// competes with the answer above it, and it is underlined because at this size
 /// nothing else marks it as something you may press.
+///
+/// The one page collects for four apps and cannot otherwise tell them apart, so
+/// `app=unstray` rides along to say which one sent the person. It is the same
+/// value everywhere in this repo, and it is never shown to anyone.
 private struct SupportLink: View {
     var body: some View {
         Link("Buy me a coffee",
-             destination: URL(string: "https://ko-fi.com/initiatorworks")!)
+             destination: URL(string: "https://ko-fi.com/initiatorworks?app=unstray")!)
             .font(D.label(11))
             .foregroundStyle(D.inkFaint)
             .underline()

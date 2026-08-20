@@ -48,6 +48,18 @@ Two things follow, and neither is done:
   for four apps. A second, empty donation route only creates more links to
   check. Douglas's call.
 
+## The Ko-fi tag records nothing until GA4 is connected
+
+2026-08-20. Every Ko-fi link in this repo carries `?app=unstray`, so the one
+page can tell which of the four apps sent a visitor. **Nobody can read that
+today.** Ko-fi exposes the parameter only through its Google Analytics 4
+integration, and that integration needs a paid Ko-fi Contributor account. The
+tag costs nothing and starts working the day Douglas connects GA4. Until then
+do not report click counts from it — there are none to report.
+
+The value is `unstray` and it must stay that in every file. RedButtonQuit,
+Time Announcer and Portmanager carry their own names the same way.
+
 ## The Ko-fi link ships only when unstray is next built for release
 
 2026-08-19. The link is on `main` and verified in a local build. The copy in

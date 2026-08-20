@@ -109,7 +109,7 @@ your screen.
 ## Support
 
 unstray is free and always will be. If it saved you from clicking a Dock icon
-five times, you can [buy me a coffee](https://ko-fi.com/initiatorworks) —
+five times, you can [buy me a coffee](https://ko-fi.com/initiatorworks?app=unstray) —
 completely optional, and it changes nothing about the app. The same page
 supports the other small Mac tools I give away.
 
