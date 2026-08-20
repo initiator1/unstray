@@ -195,8 +195,10 @@ All three silently flip during macOS updates. That is the recurring job.
   spending its whole height earning trust. `VerdictView.showsSupportLink` is
   the one place that decides this.
 - **A payment link must be opened and seen before it ships.** The destination is
-  `https://ko-fi.com/initiatorworks?app=unstray`, checked live on 2026-08-20 —
-  it renders "Buy Douglas a Coffee" with the tip form. The earlier
+  `https://ko-fi.com/initiatorworks?app=unstray`, checked live on 2026-08-20.
+  **Check that the tip form renders, never the page title** — Douglas renamed
+  the page from "Douglas" to "Douglas Baker" mid-week, so a title match would
+  have failed on a page that was working perfectly. The earlier
   `ko-fi.com/initiator1` never existed and shipped dead inside another app.
   `curl` is not the check: Ko-fi answers 403 to it from Cloudflare whether the
   page exists or not. Load it in a browser.
