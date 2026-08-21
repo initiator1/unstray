@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2 — unreleased
 
 Most of this release is unstray learning when to keep quiet. Version 0.1 told
 people that working apps were broken. Every one of those was the same failure

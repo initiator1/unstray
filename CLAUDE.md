@@ -20,7 +20,15 @@ open build/unstray.app
 ./build.sh --notarize       # release build; needs the `unstray` keychain profile
 ```
 
-**Releasing:** notarize BEFORE zipping, and verify the ticket survives the zip
+**Releasing:** bump `CFBundleShortVersionString` and `CFBundleVersion` in
+`build.sh`, and **date the changelog heading** — `## 0.2 — unreleased` becomes
+`## 0.2 — YYYY-MM-DD`. That heading stayed "unreleased" for three weeks after
+v0.1 shipped, so a later entry landed inside a version that was already out.
+The README deliberately says "Download unstray" with no number; do not put one
+back, because it points at `releases/latest` and would be wrong between the bump
+and the upload.
+
+Notarize BEFORE zipping, and verify the ticket survives the zip
 round-trip. `build/` is disposable — anything that rebuilds it (a fresh-clone
 test, a plain `./build.sh`) drops the stapled ticket, and v0.1 was briefly
 published un-notarized for exactly that reason. Always `xcrun stapler validate`

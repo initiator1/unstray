@@ -8,7 +8,7 @@ needed.
 
 <img src="docs/images/permission.png" width="380" alt="unstray asking for permission, explaining in plain words what it will and will not do">
 
-**[Download unstray 0.1](https://github.com/initiator1/unstray/releases/latest)** ·
+**[Download unstray](https://github.com/initiator1/unstray/releases/latest)** ·
 free · macOS 14 or later
 
 ---
