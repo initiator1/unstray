@@ -62,17 +62,35 @@ assets/                  App icon (gpt-image-2 via Codex's native image_gen).
 
 ## Icon
 
-Regenerate with Codex's **native `image_gen`** tool (gpt-image-2, runs on the
-ChatGPT OAuth, no API key). Never the imagegen skill's `image_gen.py` CLI, and
-never hand-rolled SVG/CSS art. After generating, rebuild:
+`assets/unstray-1024.png` is the master. Everything else is built from it:
 
 ```bash
-iconutil -c icns assets/unstray.iconset -o assets/unstray.icns && ./build.sh
+./assets/make-icns.sh && ./build.sh
 ```
 
-Direction: dark-matte squircle, deep blue-slate, warm amber thin-line screens
-with one rectangle apart being drawn back — same palette as the app itself.
-Motif should fill ~80–85% of the tile. Check legibility at 32px.
+Regenerate the master with Codex's **native `image_gen`** tool (gpt-image-2, runs
+on the ChatGPT OAuth, no API key). Never the imagegen skill's `image_gen.py` CLI,
+and never hand-rolled SVG/CSS art.
+
+**Direction:** the house lane shared with VoiceMac, StayZero and EavesJam —
+dark-matte squircle, near-black with a soft vignette, and a motif in sculpted
+warm gold with a bevel, a champagne-to-amber gradient, an inner glow and a soft
+drop shadow. Not flat outlines. The subject is one large screen and one small
+stray screen being drawn back along a curved trail. Motif fills ~70–75% of the
+tile.
+
+**One dominant silhouette, and check it at 32px.** Every icon in that lane is a
+single strong shape — one M, one O, one bookmark — which is why they survive in
+the Dock. The first attempt here used three rectangles of similar weight that
+merged into a lump at 32px, and Codex reported them as "distinct" when they were
+not. Downscale it and look yourself; a generator's own legibility check is a
+claim, not a result.
+
+**The build fails if the icns is missing, on purpose.** `Info.plist` names the
+file, so a bundle without it gets a blank Dock tile and macOS says nothing. That
+guard used to be `if [ -f ... ]`, which skipped silently — and **v0.1 shipped
+publicly with no icon at all** because the assets were still named `foremac`
+after the project was renamed and nothing ever complained.
 
 ## The three settings this app watches
 
