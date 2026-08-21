@@ -57,9 +57,18 @@ swiftc -O \
   unstray/App.swift
 
 # App icon (generated with gpt-image-2 via Codex's native image_gen).
-if [ -f assets/unstray.icns ]; then
-  cp assets/unstray.icns "$APP/Contents/Resources/unstray.icns"
+#
+# Not optional, and deliberately loud. Info.plist names this file, so a bundle
+# without it gets a blank tile in the Dock and macOS says nothing. This guard
+# used to be `if [ -f ... ]`, which silently skipped a missing icon — and v0.1
+# shipped publicly with no icon at all for exactly that reason.
+if [ ! -f assets/unstray.icns ]; then
+  echo "error: assets/unstray.icns is missing." >&2
+  echo "       Info.plist names it, so the app would ship with a blank icon." >&2
+  echo "       Rebuild it with: iconutil -c icns assets/unstray.iconset -o assets/unstray.icns" >&2
+  exit 1
 fi
+cp assets/unstray.icns "$APP/Contents/Resources/unstray.icns"
 
 # Bundle Outfit so the app looks right on a Mac that does not have it installed.
 if [ -f "$HOME/Library/Fonts/Outfit-VariableFont_wght.ttf" ]; then

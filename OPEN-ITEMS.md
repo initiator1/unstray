@@ -62,7 +62,27 @@ and timeannouncer, both added that morning, were still empty four hours later
 with correct files in place. Do not "fix" a correct file because the API has
 not caught up.
 
-## The changelog does not describe the next release
+## The next release needs a version number
+
+2026-08-20. `Info.plist` still says 0.1 and the changelog section is headed
+"Unreleased". The diff since the released v0.1 is 35 commits, most of them
+removing false accusations, plus the first working icon — that argues for
+**0.2**, not 0.1.1. Douglas picks the number.
+
+## The v0.1 tag is orphaned from main
+
+2026-08-20. `git tag v0.1` points at 28b70b8, which is **not** an ancestor of
+`main`. History was rewritten after the release, so the tagged commit was
+replaced by 17c30cf — same subject, same timestamp, identical tree, different
+sha. Any `git log v0.1..main` therefore lists the whole project, including
+v0.1's own features, which is how the previous count of "69 commits since 0.1"
+was reached. **The real release point on main is 17c30cf.**
+
+Moving the tag would fix `git describe` and GitHub's compare view, but the tag
+carries a published release, so re-pointing it is Douglas's call and needs a
+force push. Until then, diff against 17c30cf, never against the tag.
+
+## The changelog does not describe the next release — DONE 2026-08-20
 
 2026-08-20. Sixty-nine commits sit between the v0.1 tag and `main`, and about
 twenty of them change what a person sees: headless browsers no longer accused,
