@@ -78,9 +78,19 @@ sha. Any `git log v0.1..main` therefore lists the whole project, including
 v0.1's own features, which is how the previous count of "69 commits since 0.1"
 was reached. **The real release point on main is 17c30cf.**
 
-Moving the tag would fix `git describe` and GitHub's compare view, but the tag
-carries a published release, so re-pointing it is Douglas's call and needs a
-force push. Until then, diff against 17c30cf, never against the tag.
+**Decided 2026-08-20: leave it alone.** Deleting or force-moving a tag that
+carries a published GitHub release converts that release to a draft, and v0.1
+has a live `unstray-0.1.zip` with real downloads. That is a real risk to the
+only public artifact, taken to repair a reference that expires on its own: once
+`v0.2` is tagged correctly on `main`, every diff anchors to v0.2, `git describe`
+starts working, and v0.1 stops being consulted. Reach is 0 stars and 0 forks, so
+nobody outside this machine holds the tag.
+
+Revisit only if v0.2 slips past about a month, or if the repo gains forks — in
+which case the answer hardens to never touch it.
+
+Until v0.2 ships, diff against 17c30cf, never against the tag. `tag-release.sh`
+now refuses to create a tag that is not an ancestor of main.
 
 ## The changelog does not describe the next release — DONE 2026-08-20
 

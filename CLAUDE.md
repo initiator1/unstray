@@ -20,13 +20,25 @@ open build/unstray.app
 ./build.sh --notarize       # release build; needs the `unstray` keychain profile
 ```
 
-**Releasing:** bump `CFBundleShortVersionString` and `CFBundleVersion` in
-`build.sh`, and **date the changelog heading** — `## 0.2 — unreleased` becomes
-`## 0.2 — YYYY-MM-DD`. That heading stayed "unreleased" for three weeks after
+**Releasing:** `./tag-release.sh` runs the checks and creates the tag. It does
+local work only — it never pushes and never publishes, and it prints the
+remaining steps in order. Bump `CFBundleShortVersionString` and `CFBundleVersion`
+in `build.sh` first, and **date the changelog heading** — `## 0.2 — unreleased`
+becomes `## 0.2 — YYYY-MM-DD`. That heading stayed "unreleased" for three weeks after
 v0.1 shipped, so a later entry landed inside a version that was already out.
 The README deliberately says "Download unstray" with no number; do not put one
 back, because it points at `releases/latest` and would be wrong between the bump
 and the upload.
+
+**Tags are annotated and must be ancestors of `main`; `tag-release.sh` enforces
+both.** `v0.1` is neither. It was tagged on a commit that a later history
+rewrite replaced, so it sits on a parallel line and `git log v0.1..main` lists
+the whole project — a report built on that range was wrong by 34 commits. The
+real v0.1 release point on `main` is `17c30cf`, identical tree, different sha.
+**Leave that tag alone.** Deleting or force-moving a tag that carries a
+published GitHub release converts the release to a draft, and `v0.1` has a live
+asset with real downloads. It stops mattering the moment `v0.2` is tagged
+correctly.
 
 Notarize BEFORE zipping, and verify the ticket survives the zip
 round-trip. `build/` is disposable — anything that rebuilds it (a fresh-clone
