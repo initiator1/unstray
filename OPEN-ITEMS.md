@@ -198,3 +198,16 @@ Time Announcer and Portmanager carry their own names the same way.
 `/Applications` is the notarized v0.1 and does not have it. Local builds are
 not notarized, so that copy was deliberately left alone. Whoever cuts the next
 release picks the link up with it.
+
+<!-- liveness-sweep:begin -->
+## Liveness gaps
+
+_This is what was true on 2026-08-23, not necessarily what is true now._ The section is maintained automatically and clears itself once every check is live. Everything outside these markers is left alone.
+
+**Before acting on anything here, re-run the check.** Do not fix from this snapshot - another session may have already closed it.
+
+    python3 ~/.claude/scripts/liveness-sweep.py .
+
+- .github/FUNDING.yml:15, README.md:112, unstray/UI/VerdictView.swift:128, CLAUDE.md:243 and 2 more: https://ko-fi.com/initiatorworks?app=unstray: Cloudflare blocks scripted checks; load it in a browser and confirm the page renders its form — do not match the title, it changes.
+- Tag v0.1 points to 28b70b883a2285f0fde1759c04bcb3d438ed73de and is not an ancestor of origin/main. It is a lightweight tag. A diff against this tag lists commits the tag already contains; find the real release point on the branch before using it. This tag carries a published GitHub release. Deleting or force-moving it converts the release to a draft. Leave it; tag the next release correctly.
+<!-- liveness-sweep:end -->
