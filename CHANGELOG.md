@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2 — unreleased
+## 0.2 — 2026-08-22
 
 Most of this release is unstray learning when to keep quiet. Version 0.1 told
 people that working apps were broken. Every one of those was the same failure
