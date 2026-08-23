@@ -152,6 +152,16 @@ Checked live on ko-fi.com and help.ko-fi.com on 2026-08-20:
 So the real question is not what to spend. It is whether 5% of future tips is
 worth per-app attribution, and it is reversible either way.
 
+**2026-08-22: Douglas says Contributor is already on.** Not verified — the
+toggle is in his Ko-fi settings and no agent can see it from outside. If it is
+on, the remaining step for the `?app=` tags to produce a number is pasting a
+Google Analytics 4 Measurement ID into Ko-fi's page settings. Nothing in this
+repo depends on either.
+
+## The Ko-fi link ships only when unstray is next built for release — DONE 2026-08-22
+
+v0.2 is tagged, notarized and pushed with the link in it.
+
 The value is `unstray` and it must stay that in every file. RedButtonQuit,
 Time Announcer and Portmanager carry their own names the same way.
 
