@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3 — unreleased
+
+- **A lasting app problem now tells you how long it has been there.** The first
+  message still describes what just happened. If the problem stays, the words
+  change with the clock instead of leaving an old moment on screen. And if the
+  app comes back on its own, unstray notices within half a minute instead of
+  waiting for you to open the panel again.
+- **The frozen-app button now opens the Force Quit window.** If macOS blocks
+  that request, unstray opens Activity Monitor so the button still helps.
+
 ## 0.2 — 2026-08-22
 
 Most of this release is unstray learning when to keep quiet. Version 0.1 told
