@@ -451,6 +451,22 @@ final class VerdictModel: ObservableObject {
 
     private var permissionPoll: Timer?
 
+    /// Re-asks while a problem is on screen, so wording that ages actually ages.
+    ///
+    /// Every other recheck is an event — a screen change, a click, a button.
+    /// Measured 2026-08-22: a frozen app was on the panel for 155 s and the
+    /// panel still carried its first sentence, because nothing had asked again.
+    /// The same silence meant the app recovering went unnoticed. This drops
+    /// nothing: each tick is a plain recheck() and ProblemFate decides, exactly
+    /// as for any other trigger. Unlogged, so a long problem does not fill the
+    /// log with ticks.
+    private var ageRefresh: Timer?
+
+    /// What the last recheck found, so the log records a change and not a tick.
+    /// With the 30 s re-ask, logging every recheck wrote one `found` line per
+    /// tick — 120 an hour for as long as one frozen app stayed frozen.
+    private var lastFoundIDs: [String] = []
+
     /// Set once at launch when macOS has changed version since we last ran.
     /// Timing only — see Finding.followsOSUpdate.
     var followsOSUpdate = false
@@ -480,8 +496,10 @@ final class VerdictModel: ObservableObject {
         if permitted, let offEdge = WindowScan.checkOffTheEdge() {
             findings.append(offEdge)
         }
-        for (appName, kind) in OpenProblems.shared.stillTrue() {
-            findings.append(WindowScan.unusable(appName: appName, kind: kind))
+        for (appName, kind, since) in OpenProblems.shared.stillTrue() {
+            findings.append(WindowScan.unusable(appName: appName,
+                                                kind: kind,
+                                                since: since))
         }
 
         // Note that an update happened, so the panel can mention the timing.
@@ -511,16 +529,33 @@ final class VerdictModel: ObservableObject {
                 .sorted(by: Finding.shownFirst)
                 .filter { alreadyNamed.insert($0.id).inserted }
             verdict = .somethingWrong(primary: sorted[0], alsoFound: Array(sorted.dropFirst()))
-            RepairLog.found(sorted)
+            let ids = sorted.map(\.id)
+            if ids != lastFoundIDs { RepairLog.found(sorted) }
+            lastFoundIDs = ids
         } else if !permitted {
             // Nothing wrong that we can see — but without permission we cannot
             // see everything, and could not rescue anything. Say so honestly
             // rather than claiming an all-clear we have not earned.
             verdict = .needsPermission
+            lastFoundIDs = []
         } else {
             verdict = .allWell(lastCheckedDescription: "Checked just now")
+            lastFoundIDs = []
         }
         if let reason { RepairLog.write(event: "rechecked", detail: ["reason": reason]) }
+        keepWordsCurrent()
+    }
+
+    private func keepWordsCurrent() {
+        guard case .somethingWrong = verdict else {
+            ageRefresh?.invalidate()
+            ageRefresh = nil
+            return
+        }
+        guard ageRefresh == nil else { return }
+        ageRefresh = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.recheck()
+        }
     }
 
     /// Gives watcher evidence to the one function that owns the verdict.

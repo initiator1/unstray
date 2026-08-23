@@ -20,23 +20,30 @@ final class OpenProblems {
     /// Records what the watcher could not fix. Keying by pid replaces a prior
     /// look at the same process instead of making the panel count it twice.
     func record(appName: String, pid: pid_t, problem: Usability.Problem) {
-        seenByPID[pid] = Seen(appName: appName, pid: pid, seenAt: Date())
+        let now = Date()
+        let seenAt = ProblemAge.firstSighting(
+            existing: seenByPID[pid]?.seenAt,
+            sameKind: lastKindByPID[pid] == problem.kind,
+            now: now
+        )
+        seenByPID[pid] = Seen(appName: appName, pid: pid, seenAt: seenAt)
         lastKindByPID[pid] = problem.kind
     }
 
     /// Re-asks every open question and drops what is genuinely gone.
     /// Returns what is still true, oldest first, so the panel is stable.
-    func stillTrue() -> [(appName: String, kind: Usability.Problem.Kind)] {
+    func stillTrue() -> [(appName: String, kind: Usability.Problem.Kind,
+                          since: Date)] {
         let ordered = seenByPID.values.sorted {
             if $0.seenAt != $1.seenAt { return $0.seenAt < $1.seenAt }
             return $0.pid < $1.pid
         }
-        var answer: [(appName: String, kind: Usability.Problem.Kind)] = []
+        var answer: [(appName: String, kind: Usability.Problem.Kind,
+                      since: Date)] = []
 
         for seen in ordered {
             guard let app = NSRunningApplication(processIdentifier: seen.pid) else {
-                seenByPID.removeValue(forKey: seen.pid)
-                lastKindByPID.removeValue(forKey: seen.pid)
+                forget(seen)
                 continue
             }
 
@@ -52,22 +59,55 @@ final class OpenProblems {
                                   couldCheck: couldCheck,
                                   problemNow: problem != nil) {
             case .forget:
-                seenByPID.removeValue(forKey: seen.pid)
-                lastKindByPID.removeValue(forKey: seen.pid)
+                forget(seen)
 
             case .waitAndSeeAgain:
                 continue
 
             case .keepSaying:
                 if let problem {
+                    let now = Date()
+                    let since = ProblemAge.firstSighting(
+                        existing: seen.seenAt,
+                        sameKind: lastKindByPID[seen.pid] == problem.kind,
+                        now: now
+                    )
+                    if since != seen.seenAt {
+                        seenByPID[seen.pid] = Seen(appName: seen.appName,
+                                                   pid: seen.pid,
+                                                   seenAt: since)
+                    }
                     lastKindByPID[seen.pid] = problem.kind
-                    answer.append((seen.appName, problem.kind))
+                    answer.append((seen.appName, problem.kind, since))
                 } else if let last = lastKindByPID[seen.pid] {
-                    answer.append((seen.appName, last))
+                    answer.append((seen.appName, last, seen.seenAt))
                 }
             }
         }
 
         return answer
+    }
+
+    private func forget(_ seen: Seen) {
+        guard let kind = lastKindByPID[seen.pid] else {
+            seenByPID.removeValue(forKey: seen.pid)
+            return
+        }
+        seenByPID.removeValue(forKey: seen.pid)
+        lastKindByPID.removeValue(forKey: seen.pid)
+        RepairLog.write(event: "problem_cleared", detail: [
+            "problem": logName(kind),
+            "age": max(0, Int(Date().timeIntervalSince(seen.seenAt)))
+        ])
+    }
+
+    private func logName(_ kind: Usability.Problem.Kind) -> String {
+        switch kind {
+        case .hidden:             return "hidden"
+        case .notResponding:      return "notResponding"
+        case .titleBarOutOfReach: return "titleBarOutOfReach"
+        case .pushedOffTheEdge:   return "pushedOffTheEdge"
+        case .nothingToShow:      return "nothingToShow"
+        }
     }
 }

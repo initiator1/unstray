@@ -156,7 +156,7 @@ forgotten.
 
 ```bash
 git clone https://github.com/initiator1/unstray && cd unstray
-./run-tests.sh          # 103 core logic tests, about a second
+./run-tests.sh          # core logic tests, about a second
 ./build.sh              # -> build/unstray.app
 ```
 

@@ -20,9 +20,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>LSUIElement</key><true/>
   <key>CFBundleIconFile</key><string>unstray</string>
   <key>NSHumanReadableCopyright</key><string>Personal utility</string>
-  <!-- Required for the "ask an app to open a window" fallback. Without this key
-       macOS silently blocks NSAppleScript and may terminate the app outright. -->
-  <key>NSAppleEventsUsageDescription</key><string>unstray asks an app to open a window when you click it and nothing appears.</string>
+  <!-- Required for both System Events scripts. Without this key macOS silently
+       blocks NSAppleScript and may terminate the app outright. -->
+  <key>NSAppleEventsUsageDescription</key><string>unstray asks an app to open a window when you click it and nothing appears, and opens the Force Quit window when an app has stopped answering.</string>
 </dict></plist>
 PLIST
 
@@ -38,9 +38,11 @@ swiftc -O \
   unstray/Core/SettingsCheck.swift \
   unstray/Core/ScreenSpace.swift \
   unstray/Core/WindowUse.swift \
+  unstray/Core/ProblemAge.swift \
   unstray/Core/WindowScan.swift \
   unstray/Core/WindowRescue.swift \
   unstray/Core/RepairLog.swift \
+  unstray/Core/ForceQuitWindow.swift \
   unstray/Core/Lifecycle.swift \
   unstray/Core/ActivityWatch.swift \
   unstray/Core/PanelPlacement.swift \
@@ -71,10 +73,18 @@ fi
 cp assets/unstray.icns "$APP/Contents/Resources/unstray.icns"
 
 # Bundle Outfit so the app looks right on a Mac that does not have it installed.
-if [ -f "$HOME/Library/Fonts/Outfit-VariableFont_wght.ttf" ]; then
-  cp "$HOME/Library/Fonts/Outfit-VariableFont_wght.ttf" "$APP/Contents/Resources/"
-  /usr/libexec/PlistBuddy -c "Add :ATSApplicationFontsPath string ." "$APP/Contents/Info.plist" 2>/dev/null || true
+#
+# The font lives in the repo (SIL Open Font License 1.1, assets/OFL-Outfit.txt),
+# so a build depends on nothing outside the checkout. This used to copy from
+# ~/Library/Fonts behind `if [ -f ]`, which on any other Mac shipped the app
+# with no font and said nothing — the same silent skip that cost v0.1 its icon.
+FONT=assets/Outfit-VariableFont_wght.ttf
+if [ ! -f "$FONT" ]; then
+  echo "error: $FONT is missing. The app would ship in a fallback font." >&2
+  exit 1
 fi
+cp "$FONT" "$APP/Contents/Resources/"
+/usr/libexec/PlistBuddy -c "Add :ATSApplicationFontsPath string ." "$APP/Contents/Info.plist"
 
 # Sign with a stable identity, not ad-hoc.
 #

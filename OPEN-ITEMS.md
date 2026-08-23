@@ -3,7 +3,7 @@
 Things known to be unfinished or unwatched. Add a date and enough context to act
 without the conversation that found it.
 
-## A true problem can keep moment-specific wording for too long
+## A true problem can keep moment-specific wording for too long — DONE 2026-08-22
 
 2026-08-14. A recorded problem stays until the app is fixed or quits. The panel
 can therefore say "You clicked Chrome and nothing came up" long after that click.
@@ -30,6 +30,13 @@ recorded — `OpenProblems.Seen.seenAt` — and `WindowScan.unusable(appName:kin
 is the single place every one of these strings is built, so the switch belongs
 there and nowhere else. Not built yet: a mechanism with placeholder sentences in
 it would be a stub, and this repo does not ship those.
+
+**Closed 2026-08-22.** Douglas approved the later sentences from the council
+draft. Built as `ProblemAge.swift`: first sightings survive re-recording (the
+watcher re-records on every click, so the age used to reset each time), and the
+frozen and empty-app findings switch to age-carrying wording at 120 s and 300 s.
+Nothing is dropped and no timer exists. The frozen-app button now opens the
+Force Quit window. Ships in 0.3.
 
 
 ## The Sponsor button needs two halves, and both are silent when missing

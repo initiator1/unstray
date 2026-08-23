@@ -323,6 +323,87 @@ func testRepairOutcome() {
           !vocabulary.contains("success") && Set(vocabulary).count == 4)
 }
 
+// MARK: - How a problem's words age
+
+func firstSentence(_ text: String) -> String {
+    guard let stop = text.firstIndex(of: ".") else { return text }
+    return String(text[...stop])
+}
+
+func testProblemAge() {
+    print("\nproblem age")
+
+    check("a frozen app stays fresh at 119 seconds",
+          !ProblemAge.isPlain(kind: .notResponding, age: 119))
+    check("a frozen app turns plain at 120 seconds",
+          ProblemAge.isPlain(kind: .notResponding, age: 120))
+    check("an empty app stays fresh at 299 seconds",
+          !ProblemAge.isPlain(kind: .nothingToShow, age: 299))
+    check("an empty app turns plain at 300 seconds",
+          ProblemAge.isPlain(kind: .nothingToShow, age: 300))
+    check("a hidden app stays fresh at 299 seconds",
+          !ProblemAge.isPlain(kind: .hidden, age: 299))
+    check("a hidden app turns plain at 300 seconds",
+          ProblemAge.isPlain(kind: .hidden, age: 300))
+    check("a title bar never gets age wording",
+          !ProblemAge.isPlain(kind: .titleBarOutOfReach, age: 86_400))
+
+    check("45 minutes in words", ProblemAge.inWords(2_700) == "45 minutes")
+    check("2 hours in words", ProblemAge.inWords(7_200) == "2 hours")
+    check("1 day in words", ProblemAge.inWords(90_000) == "1 day")
+    check("1 minute in words", ProblemAge.inWords(60) == "1 minute")
+
+    let existing = Date(timeIntervalSince1970: 100)
+    let now = Date(timeIntervalSince1970: 200)
+    check("the first sighting survives the same problem",
+          ProblemAge.firstSighting(existing: existing,
+                                   sameKind: true,
+                                   now: now) == existing)
+    check("a changed problem starts now",
+          ProblemAge.firstSighting(existing: existing,
+                                   sameKind: false,
+                                   now: now) == now)
+    check("a new problem starts now",
+          ProblemAge.firstSighting(existing: nil,
+                                   sameKind: false,
+                                   now: now) == now)
+
+    let frozenFresh = ProblemAge.wording(appName: "Notes",
+                                          kind: .notResponding,
+                                          age: 0)
+    check("a fresh frozen headline names the present problem",
+          frozenFresh.headline == "Notes has stopped answering.")
+    check("a fresh frozen explanation starts with the click",
+          firstSentence(frozenFresh.explanation)
+              == "Clicking again will not wake it up.")
+
+    let frozenOld = ProblemAge.wording(appName: "Notes",
+                                        kind: .notResponding,
+                                        age: 3_600)
+    check("an old frozen headline stays direct",
+          frozenOld.headline == "Notes has stopped answering.")
+    check("an old frozen explanation starts with its age",
+          firstSentence(frozenOld.explanation)
+              == "Notes stopped answering about 1 hour ago and has not come back.")
+
+    let emptyFresh = ProblemAge.wording(appName: "Notes",
+                                         kind: .nothingToShow,
+                                         age: 0)
+    check("a fresh empty headline names the click",
+          emptyFresh.headline == "You clicked Notes and nothing came up.")
+    check("a fresh empty explanation names the repeated click",
+          firstSentence(emptyFresh.explanation)
+              == "This is a bug in macOS, and clicking more times will not help.")
+
+    let emptyOld = ProblemAge.wording(appName: "Notes",
+                                       kind: .nothingToShow,
+                                       age: 3_600)
+    check("an old empty headline starts with its age",
+          emptyOld.headline == "Notes has had nothing on screen for about 1 hour.")
+    check("an old empty explanation drops the old click",
+          firstSentence(emptyOld.explanation) == "This is a bug in macOS.")
+}
+
 // MARK: - The whole window judgement
 //
 // These tests call WindowUse, including the measured Epson rectangle. Its 40pt
@@ -853,6 +934,7 @@ testWindowFiltering()
 testSettings()
 testSeverityOrder()
 testRepairOutcome()
+testProblemAge()
 testOpenProblemFate()
 testVersionDrift()
 testHeadlines()

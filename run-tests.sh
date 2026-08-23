@@ -17,6 +17,7 @@ OUT=$(mktemp -d)
 cp tests/CoreTests.swift "$OUT/main.swift"
 swiftc -o "$OUT/tests" \
     unstray/Core/Finding.swift \
+    unstray/Core/ProblemAge.swift \
     unstray/Core/PanelPlacement.swift \
     unstray/Core/ScreenSpace.swift \
     unstray/Core/WindowUse.swift \

@@ -17,17 +17,21 @@ enum WindowScan {
     /// The message for whatever we could not fix. One place, so every one of
     /// these passes the same read-aloud test.
     static func unusable(appName: String, problem: Usability.Problem) -> Finding {
-        unusable(appName: appName, kind: problem.kind)
+        unusable(appName: appName, kind: problem.kind, since: Date())
     }
 
     /// Message selection needs no live window, so handles stay inside Usability
     /// and cannot outlive the window they describe.
     static func unusable(appName: String,
-                         kind: Usability.Problem.Kind) -> Finding {
+                         kind: Usability.Problem.Kind,
+                         since: Date) -> Finding {
+        let age = max(0, Date().timeIntervalSince(since))
         switch kind {
-        case .notResponding:  return appNotResponding(appName: appName)
+        case .notResponding:  return appNotResponding(appName: appName, age: age)
         case .hidden,
-             .nothingToShow:  return appShowsNothing(appName: appName)
+             .nothingToShow:  return appShowsNothing(appName: appName,
+                                                      kind: kind,
+                                                      age: age)
         case .titleBarOutOfReach: return titleBarOutOfReach(appName: appName)
         case .pushedOffTheEdge: return windowOffTheEdge(appName: appName)
         }
@@ -35,28 +39,21 @@ enum WindowScan {
 
     /// The app has stopped answering. Nothing outside it can fix that, so this
     /// exists purely so nobody is left clicking a dead picture in the bar.
-    static func appNotResponding(appName: String) -> Finding {
-        Finding(
+    static func appNotResponding(appName: String, age: TimeInterval) -> Finding {
+        let wording = ProblemAge.wording(appName: appName,
+                                         kind: .notResponding,
+                                         age: age)
+        return Finding(
             id: "not-responding",
             kind: .appNotResponding,
             severity: .nowBroken,
-            headline: "\(appName) has stopped answering.",
-            explanation: """
-            Clicking again will not wake it up. \(appName) is still running, it \
-            has just stopped listening, so nothing you click reaches it.
-
-            It usually recovers on its own within a minute. If it does not, you \
-            can force it to quit and reopen it, though you may lose anything you \
-            had not saved.
-            """,
-            actionLabel: "Show me how to force it to quit",
+            headline: wording.headline,
+            explanation: wording.explanation,
+            actionLabel: "Open the Force Quit window",
             costWarning: nil,
             technicalNote: "AX request timed out (kAXErrorCannotComplete) at 0.5s while app was frontmost.",
             repair: {
-                // Opens the panel where a person can force-quit safely, rather
-                // than doing it for them and losing their unsaved work. Nothing
-                // is repaired here, and the log must not pretend otherwise.
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
+                _ = ForceQuitWindow.open()
                 return .handedToThePerson
             }
         )
@@ -94,21 +91,19 @@ enum WindowScan {
 
     /// Built when you switched to an app, nothing appeared, and asking the app
     /// to open a window did not work either. Apple's FB21087054.
-    static func appShowsNothing(appName: String) -> Finding {
-        Finding(
+    static func appShowsNothing(appName: String,
+                                kind: Usability.Problem.Kind,
+                                age: TimeInterval) -> Finding {
+        let ageKind: ProblemAge.Kind = kind == .hidden ? .hidden : .nothingToShow
+        let wording = ProblemAge.wording(appName: appName,
+                                         kind: ageKind,
+                                         age: age)
+        return Finding(
             id: "shows-nothing",
             kind: .appShowsNothing,
             severity: .nowBroken,
-            headline: "You clicked \(appName) and nothing came up.",
-            explanation: """
-            This is a bug in macOS, and clicking more times will not help.
-
-            \(appName) really is open. Your Mac just never gave it a window to \
-            show you, and did not notice.
-
-            I asked it to open one and it did not answer. Quitting \(appName) and \
-            opening it again usually sorts it out.
-            """,
+            headline: wording.headline,
+            explanation: wording.explanation,
             actionLabel: "Try again for me",
             costWarning: nil,
             technicalNote: "FB21087054: app frontmost, activationPolicy .regular, no window >=120pt tall on any screen; kAEReopenApplication sent, still nothing.",

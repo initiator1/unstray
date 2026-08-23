@@ -16,7 +16,7 @@ open build/unstray.app
 ```
 
 ```bash
-./run-tests.sh              # 103 core logic tests, ~1 second
+./run-tests.sh              # core logic tests, ~1 second
 ./build.sh --notarize       # release build; needs the `unstray` keychain profile
 ```
 
@@ -58,7 +58,8 @@ gated.
 
 ```
 unstray/Core/
-  Finding.swift          Finding + Verdict. Every user-facing string lives here.
+  Finding.swift          Finding + Verdict.
+  ProblemAge.swift       First sightings, age thresholds, and wording that ages.
   ProblemFate.swift      Is a problem we already reported still true? Pure.
   OpenProblems.swift     Re-checks problems the watcher has already reported.
   SettingsCheck.swift    The three load-bearing macOS settings.
@@ -66,6 +67,7 @@ unstray/Core/
   WindowUse.swift        Decides whether a person can use one window where it is.
   WindowScan.swift       Finds windows beyond or mostly past a screen edge.
   WindowRescue.swift     Moves them back. AX + the Carbon shim.
+  ForceQuitWindow.swift  Opens Force Quit through System Events, with a fallback.
   LegacyActivation.{h,c} C shim for SetFrontProcessWithOptions.
   WindowlessByDesign.swift  Apps started with --headless. Never accuse these.
   RepairLog.swift        JSONL to ~/.unstray/events.jsonl (local only).
@@ -105,6 +107,11 @@ the Dock. The first attempt here used three rectangles of similar weight that
 merged into a lump at 32px, and Codex reported them as "distinct" when they were
 not. Downscale it and look yourself; a generator's own legibility check is a
 claim, not a result.
+
+**The Outfit font lives in the repo** (`assets/Outfit-VariableFont_wght.ttf`,
+SIL OFL 1.1, licence alongside) and the build fails without it. It used to be
+copied from `~/Library/Fonts` behind `if [ -f ]`, so any other Mac would have
+built an app in a fallback font with no complaint.
 
 **The build fails if the icns is missing, on purpose.** `Info.plist` names the
 file, so a bundle without it gets a blank Dock tile and macOS says nothing. That
@@ -248,6 +255,14 @@ All three silently flip during macOS updates. That is the recurring job.
 - **`recheck()` is the only producer of the verdict.** Anything that notices a
   problem records it and asks `recheck()` to decide what to show. It never writes
   the verdict itself. Two authors of one verdict caused three separate bugs.
+- **`CGEvent` cannot open the Force Quit window.** Measured 2026-08-22 with
+  flags, explicit modifier events, HID and session sources, and both event taps.
+  `System Events` can send Option-Command-Escape through `NSAppleScript`, which
+  needs Automation permission. Keep Activity Monitor as the fallback.
+- **`OpenProblems.Seen.seenAt` means first sighting.** The watcher records an
+  ongoing problem more than once. Resetting this date on each record keeps its
+  wording fresh forever and makes the measured duration false. Only a changed
+  problem kind starts a new date.
 
 ## House rules that bite here
 
