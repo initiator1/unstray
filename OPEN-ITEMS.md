@@ -76,6 +76,20 @@ not caught up.
 removing false accusations, plus the first working icon — that argues for
 **0.2**, not 0.1.1. Douglas picks the number.
 
+## The Force Quit button has not yet been pressed by a person
+
+2026-08-22. The button runs a System Events keystroke through NSAppleScript,
+which needs the Automation permission. The script itself was proven from a
+trusted process (it opened the Force Quit window; a plain CGEvent could not,
+four ways). What has NOT been exercised is the in-app path through macOS's
+one-time prompt — that prompt needs a human click, and no agent can give it.
+If the prompt is refused the button falls back to Activity Monitor.
+
+- [ ] 2026-08-22 NEEDS-BOSS: the next time unstray says an app has stopped
+  answering, press "Open the Force Quit window" once and allow the prompt.
+  Then check `~/.unstray/events.jsonl` for `"event":"force_quit_window"` with
+  `"opened":true`. If it says false, the fallback ran and this needs a look.
+
 ## v0.2 released — 2026-08-22
 
 Notarized, staple validated on the downloaded zip, `v0.2` annotated on `main`
