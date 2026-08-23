@@ -62,12 +62,18 @@ and timeannouncer, both added that morning, were still empty four hours later
 with correct files in place. Do not "fix" a correct file because the API has
 not caught up.
 
-## The next release needs a version number
+## The next release needs a version number — DONE 2026-08-22 (0.2)
 
 2026-08-20. `Info.plist` still says 0.1 and the changelog section is headed
 "Unreleased". The diff since the released v0.1 is 35 commits, most of them
 removing false accusations, plus the first working icon — that argues for
 **0.2**, not 0.1.1. Douglas picks the number.
+
+## v0.2 released — 2026-08-22
+
+Notarized, staple validated on the downloaded zip, `v0.2` annotated on `main`
+(28f84b1), `releases/latest` serves it. `git describe` works again. The v0.1
+tag below stops mattering from here.
 
 ## The v0.1 tag is orphaned from main
 
