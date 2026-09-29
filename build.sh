@@ -12,7 +12,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleName</key><string>unstray</string>
   <key>CFBundleDisplayName</key><string>unstray</string>
   <key>CFBundleIdentifier</key><string>llc.initiator.unstray</string>
-  <key>CFBundleVersion</key><string>3</string>
+  <key>CFBundleVersion</key><string>4</string>
   <key>CFBundleShortVersionString</key><string>0.3</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>unstray</string>

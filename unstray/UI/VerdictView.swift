@@ -34,29 +34,24 @@ struct VerdictView: View {
 
     @ViewBuilder
     private var panelContent: some View {
-        if let selectedAppStatus {
-            AllWellPanel(lastChecked: "Checked just now",
-                         selectedAppStatus: selectedAppStatus,
-                         onRecheck: onRecheck, onDismiss: onDismiss)
-        } else {
-            switch verdict {
-            case .needsPermission:
-                if awaitingPermission {
-                    PermissionPendingPanel(
-                        onRecheck: onRecheck,
-                        onOpenSettings: onOpenPrivacySettings,
-                        onDismiss: onDismiss
-                    )
-                } else {
-                    PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
-                }
-            case .allWell(let when):
-                AllWellPanel(lastChecked: when, selectedAppStatus: nil,
-                             onRecheck: onRecheck, onDismiss: onDismiss)
-            case .somethingWrong(let primary, let also):
-                ProblemPanel(finding: primary, alsoFound: also,
-                             onRepair: onRepair, onDismiss: onDismiss)
+        switch verdict {
+        case .needsPermission:
+            if awaitingPermission {
+                PermissionPendingPanel(
+                    onRecheck: onRecheck,
+                    onOpenSettings: onOpenPrivacySettings,
+                    onDismiss: onDismiss
+                )
+            } else {
+                PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
             }
+        case .allWell(let when):
+            AllWellPanel(lastChecked: when, selectedAppStatus: selectedAppStatus,
+                         onRecheck: onRecheck, onDismiss: onDismiss)
+        case .somethingWrong(let primary, let also):
+            ProblemPanel(finding: primary, alsoFound: also,
+                         selectedAppStatus: selectedAppStatus,
+                         onRepair: onRepair, onDismiss: onDismiss)
         }
     }
 
@@ -135,7 +130,7 @@ struct VerdictView: View {
     /// cannot afford to spend. The all-clear panel asks for nothing, and it is
     /// the one a person sees almost every time.
     private var showsSupportLink: Bool {
-        if case .allWell = verdict { return true }
+        if case .allWell = verdict, selectedAppStatus == nil { return true }
         return false
     }
 
@@ -260,6 +255,7 @@ private struct AllWellPanel: View {
 private struct ProblemPanel: View {
     let finding: Finding
     let alsoFound: [Finding]
+    let selectedAppStatus: (headline: String, detail: String)?
     let onRepair: (Finding) -> Void
     let onDismiss: () -> Void
 
@@ -325,6 +321,21 @@ private struct ProblemPanel: View {
                     .buttonStyle(USButton(role: .quiet))
             }
             .padding(.top, 2)
+
+            if let selectedAppStatus {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(selectedAppStatus.headline)
+                        .font(D.label(12))
+                        .foregroundStyle(D.ink)
+                    Text(selectedAppStatus.detail)
+                        .font(D.body(12.5))
+                        .foregroundStyle(D.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 10)
+                .overlay(alignment: .top) { Rectangle().fill(D.hairline).frame(height: 1) }
+            }
 
             if !alsoFound.isEmpty {
                 Text(alsoSentence)

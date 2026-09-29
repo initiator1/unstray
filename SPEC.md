@@ -114,6 +114,12 @@ window bug. A named-app request can move one window within the current Space.
 **Never fail silently.** If the app cannot help, it says so. Silently doing
 nothing is the exact bug it exists to fix.
 
+**Keep the next useful action visible.** A named-app result is extra context;
+it never replaces a real problem or its repair button. A failed named-app result
+survives background checks, and Check again retries that app when shown. The
+support link appears only on a plain all-clear panel, with no named-app message
+beside it.
+
 ## Free, and why
 
 Free and MIT, deliberately. Not because a Mac utility cannot earn, but because

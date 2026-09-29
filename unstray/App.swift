@@ -713,10 +713,12 @@ final class VerdictModel: ObservableObject {
             case .nothingToShow where !asked:
                 selectedAppStatus = ("I still can't show \(name).",
                                      "I could not ask it to show a window. Try the app's Window menu in the bar at the top.")
+                selectedAppNeedsAttention = true
                 return
             case .notResponding:
                 selectedAppStatus = ("\(name) is not answering yet.",
                                      "Give it a moment, then choose it again here.")
+                selectedAppNeedsAttention = true
                 return
             default:
                 OpenProblems.shared.record(appName: name, pid: app.processIdentifier,

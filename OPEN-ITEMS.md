@@ -47,6 +47,22 @@ expiry path ran, but no capture confirms what the panel showed. If this repeats,
 capture the app and covering window at the warning instant.
 The named-app picker's own final live result remains unverified; its first test
 failed, and the later `selected_app` log reports a move without a paired screenshot.
+On 2026-09-29, a further live attempt could not open the menu-bar popover with
+the available desktop control. The app is a menu-bar helper, and that control
+does not expose its popover as a window. No picker choice reached the app log.
+The next live check needs a real menu-bar choice and a paired screen capture.
+
+The 2026-09-29 independent code review found three panel defects in build 3.
+A named-app message could hide an actionable finding, a failed named-app check
+could vanish on background recheck, and a support link could appear beside a
+failure. Build 4 fixes all three. Core tests pass 143/143, and a rendered problem
+fixture shows the repair button and named-app message together. A second code
+review found no actionable defect in the fix. Apple accepted and stapled build 4.
+The installed executable matches the build; Gatekeeper accepts it. Build 3 is
+preserved in `~/Library/Application Support/unstray/previous-apps/`.
+The running process uses `/Applications/unstray.app`, and the enabled login item
+points there. The app logged its launch. Its real popover, a named-app retry,
+and the next login remain unverified.
 
 ## Panel height uses the screen it is on — installed locally 2026-09-29
 
