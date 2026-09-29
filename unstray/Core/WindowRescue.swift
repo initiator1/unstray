@@ -274,4 +274,33 @@ enum WindowRescue {
         }
         return didSomething
     }
+
+    /// The person explicitly named an app they cannot see. A window can be
+    /// inside screen bounds yet covered by another app's floating panel. Move
+    /// one substantial window into clear view; leave its other windows alone.
+    @discardableResult
+    static func centerChosenWindow(pid: pid_t) -> Bool {
+        guard hasPermission else { return false }
+        let target = WindowScan.screenUnderCursor()
+        guard !target.isNull else { return false }
+
+        for win in reachableWindows(pid: pid) {
+            guard let originalFrame = frame(of: win),
+                  originalFrame.width >= 120, originalFrame.height >= 120 else { continue }
+            if isMinimized(win) { unminimize(win) }
+            let destination = placeInside(originalFrame.size, screen: target)
+            if abs(originalFrame.minX - destination.x) < 2,
+               abs(originalFrame.minY - destination.y) < 2 {
+                AXUIElementPerformAction(win, kAXRaiseAction as CFString)
+                return false
+            }
+            guard move(win, to: destination) else { continue }
+            AXUIElementPerformAction(win, kAXRaiseAction as CFString)
+            guard let updated = frame(of: win),
+                  abs(updated.minX - destination.x) < 2,
+                  abs(updated.minY - destination.y) < 2 else { continue }
+            return true
+        }
+        return false
+    }
 }

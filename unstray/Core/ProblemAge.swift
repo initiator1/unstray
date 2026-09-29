@@ -85,23 +85,23 @@ enum ProblemAge {
                     explanation: """
                     This is a bug in macOS.
 
-                    \(appName) really is open. Your Mac just never gave it a window to \
-                    show you, and did not notice.
+                    \(appName) really is open. Your Mac is not showing a window you can \
+                    use, and did not notice.
 
-                    I asked it to open one and it did not answer. Quitting \(appName) and \
+                    I asked it to show one and it did not answer. Quitting \(appName) and \
                     opening it again usually sorts it out.
                     """
                 )
             }
             return Wording(
-                headline: "You clicked \(appName) and nothing came up.",
+                headline: "You tried to open \(appName), but nothing came up.",
                 explanation: """
                 This is a bug in macOS, and clicking more times will not help.
 
-                \(appName) really is open. Your Mac just never gave it a window to \
-                show you, and did not notice.
+                \(appName) really is open. Your Mac is not showing a window you can \
+                use, and did not notice.
 
-                I asked it to open one and it did not answer. Quitting \(appName) and \
+                I asked it to show one and it did not answer. Quitting \(appName) and \
                 opening it again usually sorts it out.
                 """
             )

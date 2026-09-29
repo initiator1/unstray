@@ -2,6 +2,16 @@
 
 ## 0.3 — unreleased
 
+- **Unstray notices a covered active app without a second choice.** It checks
+  the active app after a switch and every two seconds while it stays active.
+  It raises the app first, then moves one window only if another app still
+  covers it. A transparent overlay no longer counts as hiding an app that you
+  can still reach. If an automatic warning becomes stale, it clears itself.
+  It tells you if the repair does not hold.
+- **You can name an app that will not appear.** Choose it from "Missing an app?"
+  in the panel. unstray tries to bring one window to the center of your screen
+  and tells you what it could confirm. This also covers repeated clicks that
+  cause no new app switch.
 - **A lasting app problem now tells you how long it has been there.** The first
   message still describes what just happened. If the problem stays, the words
   change with the clock instead of leaving an old moment on screen. And if the

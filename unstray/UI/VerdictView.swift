@@ -19,34 +19,44 @@ private struct PanelHeightKey: PreferenceKey {
 /// to press.
 struct VerdictView: View {
     let verdict: Verdict
+    let selectedAppStatus: (headline: String, detail: String)?
     let awaitingPermission: Bool
     let onRepair: (Finding) -> Void
     let onRecheck: () -> Void
+    let onChooseApp: (pid_t) -> Void
     let onGrantPermission: () -> Void
     let onOpenPrivacySettings: () -> Void
     let onDismiss: () -> Void
     let onQuit: () -> Void
+    var visibleHeight: CGFloat = NSScreen.main?.visibleFrame.height ?? 800
 
     @State private var contentHeight: CGFloat = 0
 
     @ViewBuilder
     private var panelContent: some View {
-        switch verdict {
-        case .needsPermission:
-            if awaitingPermission {
-                PermissionPendingPanel(
-                    onRecheck: onRecheck,
-                    onOpenSettings: onOpenPrivacySettings,
-                    onDismiss: onDismiss
-                )
-            } else {
-                PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
+        if let selectedAppStatus {
+            AllWellPanel(lastChecked: "Checked just now",
+                         selectedAppStatus: selectedAppStatus,
+                         onRecheck: onRecheck, onDismiss: onDismiss)
+        } else {
+            switch verdict {
+            case .needsPermission:
+                if awaitingPermission {
+                    PermissionPendingPanel(
+                        onRecheck: onRecheck,
+                        onOpenSettings: onOpenPrivacySettings,
+                        onDismiss: onDismiss
+                    )
+                } else {
+                    PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
+                }
+            case .allWell(let when):
+                AllWellPanel(lastChecked: when, selectedAppStatus: nil,
+                             onRecheck: onRecheck, onDismiss: onDismiss)
+            case .somethingWrong(let primary, let also):
+                ProblemPanel(finding: primary, alsoFound: also,
+                             onRepair: onRepair, onDismiss: onDismiss)
             }
-        case .allWell(let when):
-            AllWellPanel(lastChecked: when, onRecheck: onRecheck, onDismiss: onDismiss)
-        case .somethingWrong(let primary, let also):
-            ProblemPanel(finding: primary, alsoFound: also,
-                         onRepair: onRepair, onDismiss: onDismiss)
         }
     }
 
@@ -57,8 +67,7 @@ struct VerdictView: View {
     /// not at all on a small or scaled display, or with Larger Text switched on.
     /// So cap it and let the rest scroll rather than fall off the bottom.
     private var maxPanelHeight: CGFloat {
-        let visible = NSScreen.main?.visibleFrame.height ?? 800
-        return max(320, visible - 60)
+        PanelPlacement.maxContentHeight(visibleHeight: visibleHeight)
     }
 
     var body: some View {
@@ -80,16 +89,35 @@ struct VerdictView: View {
 
             // The footer stays put, so Quit is always reachable even when the
             // panel above it is scrolling.
-            HStack(spacing: 14) {
-                Text("unstray \(Bundle.main.shortVersion)")
-                    .font(D.label(11))
-                    .foregroundStyle(D.inkFaint)
-                if showsSupportLink { SupportLink() }
-                Spacer()
-                Button("Quit", action: onQuit)
-                    .buttonStyle(.plain)
-                    .font(D.label(11))
-                    .foregroundStyle(D.inkFaint)
+            VStack(alignment: .leading, spacing: 9) {
+                if canChooseApp {
+                    Menu("Missing an app?") {
+                        ForEach(NSWorkspace.shared.runningApplications
+                            .filter { $0.activationPolicy == .regular &&
+                                      $0.processIdentifier != getpid() &&
+                                      !WindowlessByDesign.applies(to: $0) }
+                            .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") },
+                            id: \.processIdentifier) { app in
+                            Button(app.localizedName ?? "Unnamed app") {
+                                onChooseApp(app.processIdentifier)
+                            }
+                        }
+                    }
+                    .font(D.body(13))
+                    .foregroundStyle(D.inkSoft)
+                    .help("Choose the open app whose window you cannot see.")
+                }
+                HStack(spacing: 14) {
+                    Text("unstray \(Bundle.main.shortVersion)")
+                        .font(D.label(11))
+                        .foregroundStyle(D.inkFaint)
+                    if showsSupportLink { SupportLink() }
+                    Spacer()
+                    Button("Quit", action: onQuit)
+                        .buttonStyle(.plain)
+                        .font(D.label(11))
+                        .foregroundStyle(D.inkFaint)
+                }
             }
             .padding(.horizontal, D.pad)
             .padding(.vertical, 11)
@@ -109,6 +137,10 @@ struct VerdictView: View {
     private var showsSupportLink: Bool {
         if case .allWell = verdict { return true }
         return false
+    }
+
+    private var canChooseApp: Bool {
+        WindowRescue.hasPermission
     }
 }
 
@@ -141,6 +173,7 @@ private struct SupportLink: View {
 
 private struct AllWellPanel: View {
     let lastChecked: String
+    let selectedAppStatus: (headline: String, detail: String)?
     let onRecheck: () -> Void
     let onDismiss: () -> Void
 
@@ -148,7 +181,8 @@ private struct AllWellPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            ScreenDiagram(strayCount: 0, tint: D.calm)
+            ScreenDiagram(strayCount: 0,
+                          tint: selectedAppStatus == nil ? D.calm : D.attention)
                 .padding(.top, 2)
                 .opacity(appeared ? 1 : 0)
                 .scaleEffect(appeared ? 1 : 0.97)
@@ -157,24 +191,26 @@ private struct AllWellPanel: View {
             VStack(alignment: .leading, spacing: 8) {
                 // A quiet mark that everything is accounted for. The only place
                 // the calm colour speaks above a whisper.
-                HStack(spacing: 7) {
-                    Circle()
-                        .fill(D.calm)
-                        .frame(width: 5, height: 5)
-                        .accessibilityHidden(true)
-                    Text("All clear")
-                        .font(D.label(11))
-                        .tracking(1.1)
-                        .foregroundStyle(D.calm)
+                if selectedAppStatus == nil {
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(D.calm)
+                            .frame(width: 5, height: 5)
+                            .accessibilityHidden(true)
+                        Text("No problem found")
+                            .font(D.label(11))
+                            .tracking(1.1)
+                            .foregroundStyle(D.calm)
+                    }
                 }
 
-                Text("Everything is where\nit should be.")
+                Text(selectedAppStatus?.headline ?? "Nothing looks\nout of place.")
                     .font(D.display(25))
                     .foregroundStyle(D.ink)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(screenSentence)
+                Text(selectedAppStatus?.detail ?? screenSentence)
                     .font(D.body(13.5))
                     .foregroundStyle(D.inkSoft)
                     .lineSpacing(3.5)
@@ -212,7 +248,7 @@ private struct AllWellPanel: View {
     private var screenSentence: String {
         let n = NSScreen.screens.count
         let screens = n == 1 ? "your screen" : "all \(n) of your screens"
-        return "I looked at \(screens) and at everything you have open. Nothing is hidden, and nothing has wandered off where you cannot reach it."
+        return "I checked \(screens) for windows stuck beyond an edge. If an app still will not appear, choose it below."
     }
 }
 

@@ -5,17 +5,14 @@ import Carbon.HIToolbox
 /// The app itself: a small picture in the bar at the top of the screen that
 /// stays out of the way until it is needed.
 ///
-/// It does not sit and watch. Watching would mean polling, guessing, and moving
-/// things around while a person is trying to work — and it cannot reliably be
-/// done anyway, because macOS gives no way to tell "the person clicked this
-/// app's picture" apart from any other way of switching apps.
-///
-/// So it checks at the moments that actually matter:
+/// It checks at the moments that actually matter:
 ///   - when you open it
 ///   - when you press the key combination
 ///   - when a screen is plugged in or unplugged
 ///   - when the Mac wakes up
 ///   - after a macOS update, which is what silently broke things last time
+/// It also checks the frontmost app for a fully covered window every two seconds.
+/// That catches a repeated Dock click without watching the person's input.
 @main
 struct UnstrayApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
@@ -34,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let emptyAppWatch = EmptyAppWatch()
     private var frameObservers: [NSObjectProtocol] = []
     private var isClamping = false
+    private var automaticCoveredPanelPID: pid_t?
 
     /// Something for the panel to hang from when the menu-bar icon is hidden.
     /// Created once, on demand. See panelAnchor().
@@ -49,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observeSystemEvents()
 
         // Whenever the answer changes, the picture in the bar changes with it.
-        verdictObserver = model.$verdict
+        verdictObserver = model.$verdict.combineLatest(model.$selectedAppNeedsAttention)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusIcon() }
 
@@ -62,6 +60,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         emptyAppWatch.onUnfixable = { [weak self] appName, pid, problem in
             self?.model.noteUnusable(appName: appName, pid: pid, problem: problem)
             self?.showPanel(sticky: true, keepVerdict: true)
+        }
+        emptyAppWatch.onStillCovered = { [weak self] appName, pid in
+            guard let self else { return }
+            self.model.noteStillCovered(appName: appName, pid: pid)
+            let opensForThisWarning = !self.popover.isShown
+            self.showPanel(sticky: true, keepVerdict: true)
+            self.automaticCoveredPanelPID = opensForThisWarning && self.popover.isShown
+                ? pid : nil
+        }
+        emptyAppWatch.onCoveredEpisodeEnded = { [weak self] pid in
+            guard let self, self.model.clearAutomaticCoveredAlert(pid: pid) else { return }
+            if self.automaticCoveredPanelPID == pid {
+                self.automaticCoveredPanelPID = nil
+                if case .allWell = self.model.verdict {
+                    self.closePanel()
+                }
+            }
         }
         emptyAppWatch.start()
 
@@ -114,7 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let b = statusItem.button else { return }
         let needsAttention: Bool
         switch model.verdict {
-        case .allWell:                         needsAttention = false
+        case .allWell:                         needsAttention = model.selectedAppNeedsAttention
         case .needsPermission, .somethingWrong: needsAttention = true
         }
 
@@ -147,10 +162,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rootView: VerdictHost(
                 model: model,
                 onDismiss: { [weak self] in
+                    self?.automaticCoveredPanelPID = nil
                     self?.popover.behavior = .transient
                     self?.popover.performClose(nil)
+                    self?.model.acknowledgeSelectedAppFailure()
                 },
-                onQuit: { NSApp.terminate(nil) }
+                onQuit: { NSApp.terminate(nil) },
+                onChooseApp: { [weak self] pid in
+                    self?.automaticCoveredPanelPID = nil
+                    // Keep the answer open while bringing another app forward.
+                    self?.popover.behavior = .applicationDefined
+                    self?.model.findSelectedApp(pid: pid)
+                },
+                visibleHeight: targetVisibleHeight()
             )
         )
         popover.contentViewController = host
@@ -160,7 +184,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // watchers outlive the window they were watching.
         NotificationCenter.default.addObserver(
             forName: NSPopover.didCloseNotification, object: popover, queue: .main
-        ) { [weak self] _ in self?.stopWatchingPanelFrame() }
+        ) { [weak self] _ in
+            self?.automaticCoveredPanelPID = nil
+            self?.stopWatchingPanelFrame()
+        }
     }
 
     /// Escape always closes the panel, in every state. A keyboard way out is
@@ -258,6 +285,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !didSomething { showPanel(sticky: true) }
     }
 
+    /// Visible height of the screen the panel belongs on, not the main screen.
+    private func targetVisibleHeight() -> CGFloat {
+        let displays = PanelPlacement.displays()
+        if let i = PanelPlacement.targetDisplay(anchor: statusItem?.button?.window?.frame,
+                                                pointer: NSEvent.mouseLocation,
+                                                displays: displays) {
+            return displays[i].visible.height
+        }
+        return NSScreen.main?.visibleFrame.height ?? 800
+    }
+
     /// Opens the panel.
     ///
     /// `sticky` is for the times the app speaks first — after a macOS update,
@@ -292,10 +330,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                                    displays: displays)
         else { return }
 
+        if let host = popover.contentViewController as? NSHostingController<VerdictHost> {
+            host.rootView = VerdictHost(
+                model: model,
+                onDismiss: host.rootView.onDismiss,
+                onQuit: host.rootView.onQuit,
+                onChooseApp: host.rootView.onChooseApp,
+                visibleHeight: displays[i].visible.height
+            )
+        }
+
         let target = PanelPlacement.clamp(win.frame,
                                           into: displays[i].visible,
                                           shadow: panelShadowInset(win))
-        guard target.origin != win.frame.origin else { return }
+        guard target.origin != win.frame.origin || target.size != win.frame.size else { return }
 
         isClamping = true
         win.setFrame(target, display: true)
@@ -444,6 +492,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// Keeps the current answer, and knows how to work it out again.
 final class VerdictModel: ObservableObject {
     @Published var verdict: Verdict = .allWell(lastCheckedDescription: "Checked just now")
+    @Published var selectedAppStatus: (headline: String, detail: String)?
+    @Published var selectedAppNeedsAttention = false
+    private var selectedAppPID: pid_t?
+    private var automaticCoveredPID: pid_t?
 
     /// True between asking for permission and being given it, so the panel can
     /// say "your Mac is asking you now" instead of repeating the request.
@@ -479,6 +531,16 @@ final class VerdictModel: ObservableObject {
     }
 
     func recheck(reason: String? = nil) {
+        if selectedAppNeedsAttention,
+           let pid = selectedAppPID,
+           NSRunningApplication(processIdentifier: pid)?.isTerminated != false {
+            selectedAppNeedsAttention = false
+            automaticCoveredPID = nil
+        }
+        if !selectedAppNeedsAttention {
+            selectedAppStatus = nil
+            selectedAppPID = nil
+        }
         let permitted = WindowRescue.hasPermission
         if permitted {
             awaitingPermission = false
@@ -560,8 +622,119 @@ final class VerdictModel: ObservableObject {
 
     /// Gives watcher evidence to the one function that owns the verdict.
     func noteUnusable(appName: String, pid: pid_t, problem: Usability.Problem) {
+        automaticCoveredPID = nil
+        selectedAppNeedsAttention = false
         OpenProblems.shared.record(appName: appName, pid: pid, problem: problem)
         recheck()
+    }
+
+    func noteStillCovered(appName: String, pid: pid_t) {
+        automaticCoveredPID = pid
+        selectedAppPID = pid
+        selectedAppStatus = ("I still can't show \(appName).",
+                             "Its window is open, but another app is covering it. Choose \(appName) below to try again.")
+        selectedAppNeedsAttention = true
+    }
+
+    /// An automatic warning describes the current covered episode. It expires
+    /// when the app is reachable again or the person moves to another app.
+    @discardableResult
+    func clearAutomaticCoveredAlert(pid: pid_t) -> Bool {
+        guard automaticCoveredPID == pid else { return false }
+        automaticCoveredPID = nil
+        selectedAppNeedsAttention = false
+        recheck(reason: "covered app visible again")
+        return true
+    }
+
+    func acknowledgeSelectedAppFailure() {
+        guard selectedAppNeedsAttention else { return }
+        automaticCoveredPID = nil
+        selectedAppNeedsAttention = false
+        recheck(reason: "covered app acknowledged")
+    }
+
+    func recheckFromPanel() {
+        if selectedAppNeedsAttention, let pid = selectedAppPID {
+            findSelectedApp(pid: pid)
+        } else {
+            recheck(reason: "asked")
+        }
+    }
+
+    /// The person named the app they cannot see. Use the same targeted rescue
+    /// as the hotkey, even when a repeated Dock click caused no activation event.
+    func findSelectedApp(pid: pid_t) {
+        automaticCoveredPID = nil
+        selectedAppNeedsAttention = false
+        selectedAppPID = pid
+        selectedAppStatus = nil
+        guard let app = NSRunningApplication(processIdentifier: pid),
+              !app.isTerminated, app.activationPolicy == .regular,
+              !WindowlessByDesign.applies(to: app) else {
+            selectedAppStatus = ("That app has closed.", "Choose it again after you open it.")
+            return
+        }
+        guard WindowRescue.hasPermission else {
+            recheck(reason: "selected app needs permission")
+            return
+        }
+
+        let name = app.localizedName ?? "That app"
+        let gathered = WindowRescue.gather(pid: pid)
+        let centered = WindowRescue.centerChosenWindow(pid: pid)
+        let moved = gathered || centered
+        RepairLog.write(event: "selected_app", detail: ["movedWindow": moved])
+
+        // A reopen request can take effect after it returns. Keep the named app
+        // in view until that second check; an accepted event is not a window.
+        if case .nothingToShow? = Usability.problem(for: app) {
+            let asked = AppReopen.ask(app)
+            selectedAppStatus = ("Looking for \(name)…",
+                                 asked ? "I asked it to open a window." : "I could not ask it to open a window.")
+            DispatchQueue.main.asyncAfter(deadline: .now() + EmptyAppWatch.repairSettleDelay) { [weak self] in
+                guard let self else { return }
+                self.finishSelectedAppCheck(app, name: name, asked: asked, moved: moved)
+            }
+            return
+        }
+        finishSelectedAppCheck(app, name: name, asked: false, moved: moved)
+    }
+
+    private func finishSelectedAppCheck(_ app: NSRunningApplication, name: String,
+                                        asked: Bool, moved: Bool) {
+        guard selectedAppPID == app.processIdentifier else { return }
+        guard !app.isTerminated else {
+            selectedAppStatus = ("\(name) has closed.", "Open it and choose it again here.")
+            return
+        }
+        if let problem = Usability.problem(for: app) {
+            switch problem {
+            case .nothingToShow where !asked:
+                selectedAppStatus = ("I still can't show \(name).",
+                                     "I could not ask it to show a window. Try the app's Window menu in the bar at the top.")
+                return
+            case .notResponding:
+                selectedAppStatus = ("\(name) is not answering yet.",
+                                     "Give it a moment, then choose it again here.")
+                return
+            default:
+                OpenProblems.shared.record(appName: name, pid: app.processIdentifier,
+                                           problem: problem)
+                recheck(reason: "selected app still missing")
+                return
+            }
+        }
+
+        recheck(reason: "selected app found")
+        if WindowOcclusion.coveredWindow(pid: app.processIdentifier) != nil {
+            noteStillCovered(appName: name, pid: app.processIdentifier)
+        } else {
+            selectedAppStatus = moved
+                ? ("I moved \(name) back onto a screen.", "Can you see it now?")
+                : ("\(name) has an open window.",
+                   "I tried to bring it forward. If it is still missing, it may be in another set of windows.")
+        }
     }
 
     func repair(_ f: Finding) {
@@ -617,17 +790,22 @@ private struct VerdictHost: View {
     @ObservedObject var model: VerdictModel
     let onDismiss: () -> Void
     let onQuit: () -> Void
+    let onChooseApp: (pid_t) -> Void
+    var visibleHeight: CGFloat
 
     var body: some View {
         VerdictView(
             verdict: model.verdict,
+            selectedAppStatus: model.selectedAppStatus,
             awaitingPermission: model.awaitingPermission,
             onRepair: { model.repair($0) },
-            onRecheck: { model.recheck(reason: "asked") },
+            onRecheck: { model.recheckFromPanel() },
+            onChooseApp: onChooseApp,
             onGrantPermission: { model.requestPermission() },
             onOpenPrivacySettings: { model.openPrivacySettings() },
             onDismiss: onDismiss,
-            onQuit: onQuit
+            onQuit: onQuit,
+            visibleHeight: visibleHeight
         )
     }
 }

@@ -125,8 +125,8 @@ These are the three real problems found on this machine. Each is written twice.
 > The app really is open. Your Mac just forgot to put it in front of everything
 > else.
 >
-> Press **⌥⌘R** any time this happens and I will go find it and put it in front
-> of you.
+> Unstray checks the app you just opened and tries to bring it forward. If it
+> cannot, it tells you. You can also press **⌥⌘R** to try again.
 >
 > [ Show me how ]
 

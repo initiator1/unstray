@@ -3,6 +3,57 @@
 Things known to be unfinished or unwatched. Add a date and enough context to act
 without the conversation that found it.
 
+## Automatic covered-window recovery is installed locally — 2026-09-29
+
+The first live picker test on 2026-09-28 found Calculator's window but did not
+reveal it. The window was within screen bounds, behind Aria's right panel.
+That exposed the missing automatic check: `EmptyAppWatch` only reacted to app
+activation, while `Usability` treated an in-bounds covered window as usable.
+
+Version 0.3 checks the frontmost app's window order after activation
+and every two seconds. It raises the app, then moves one window only when every
+usable window remains almost fully covered. A first live test moved Calculator
+but reported failure too early. After a longer settle check, a controlled test
+put Calculator behind Aria at (2728, 213) while it was active. Unstray logged
+`app_covered_fixed`, moved it to (1389, 658), and a capture of both connected
+displays showed Calculator in front.
+
+On 2026-09-29 at 00:44 local time, Unstray warned that it still could not show
+ChatGPT while BOSS's capture showed ChatGPT in front. The exact window above it
+at the warning instant was not logged. A controlled transparent overlay
+reproduced the detector's false premise: Core Graphics reported a full-screen
+window with alpha 1 above ChatGPT, while an Accessibility hit test reached
+ChatGPT through it. Version 0.3 now vetoes that cover, and an automatic
+warning ends when the app becomes reachable. In the live overlay test, the old
+bounds check said covered and the new check said visible; Unstray logged no
+warning. A new live Calculator test still detected the real Aria cover and
+moved Calculator from (2728, 213) to (1389, 658). Core tests pass 143/143; the
+local build signs and passes strict signature verification.
+
+On 2026-09-29, build 3 of version 0.3 passed Apple's notarization and was
+installed at `/Applications/unstray.app`. Gatekeeper accepts that installed
+copy. The old 0.1 app is preserved under `~/Library/Application Support/unstray/previous-apps/`.
+The running process uses the installed path, and the enabled login item now
+points there. A controlled test of that installed process moved Calculator
+from (2728, 213) behind Aria to (1389, 658), with `app_covered_fixed` logged.
+The source is checkpointed on `codex/proactive-window-recovery`. The installed
+executable matches `build/unstray.app` byte for byte, and core tests pass 143/143.
+The next login has not been tested. This is a local install, not a public release.
+At 01:29 local time, the installed app logged a second covered episode and
+`app_covered_unfixed` with `movedWindow:false`. It rechecked and cleared that
+episode two seconds later. The log omits the app and covering window, so this
+cannot yet be classified as a true cover or a false warning. The automatic
+expiry path ran, but no capture confirms what the panel showed. If this repeats,
+capture the app and covering window at the warning instant.
+The named-app picker's own final live result remains unverified; its first test
+failed, and the later `selected_app` log reports a move without a paired screenshot.
+
+## Panel height uses the screen it is on — installed locally 2026-09-29
+
+The panel-height fix is part of the installed 0.3 build. Core tests pass 143/143.
+Multi-screen desk proof is still needed: a tall notice must stay fully on the
+shorter display. This is not a GitHub release.
+
 ## A true problem can keep moment-specific wording for too long — DONE 2026-08-22
 
 2026-08-14. A recorded problem stays until the app is fixed or quits. The panel
@@ -192,22 +243,15 @@ v0.2 is tagged, notarized and pushed with the link in it.
 The value is `unstray` and it must stay that in every file. RedButtonQuit,
 Time Announcer and Portmanager carry their own names the same way.
 
-## The Ko-fi link ships only when unstray is next built for release
-
-2026-08-19. The link is on `main` and verified in a local build. The copy in
-`/Applications` is the notarized v0.1 and does not have it. Local builds are
-not notarized, so that copy was deliberately left alone. Whoever cuts the next
-release picks the link up with it.
-
 <!-- liveness-sweep:begin -->
 ## Liveness gaps
 
-_This is what was true on 2026-08-23, not necessarily what is true now._ The section is maintained automatically and clears itself once every check is live. Everything outside these markers is left alone.
+_This is what was true on 2026-09-21, not necessarily what is true now._ The section is maintained automatically and clears itself once every check is live. Everything outside these markers is left alone.
 
 **Before acting on anything here, re-run the check.** Do not fix from this snapshot - another session may have already closed it.
 
     python3 ~/.claude/scripts/liveness-sweep.py .
 
-- .github/FUNDING.yml:15, README.md:112, unstray/UI/VerdictView.swift:128, CLAUDE.md:243 and 2 more: https://ko-fi.com/initiatorworks?app=unstray: Cloudflare blocks scripted checks; load it in a browser and confirm the page renders its form — do not match the title, it changes.
+- .github/FUNDING.yml:15, README.md:112, unstray/UI/VerdictView.swift:128, CLAUDE.md:243: https://ko-fi.com/initiatorworks?app=unstray: Cloudflare blocks scripted checks; load it in a browser and confirm the page renders its form — do not match the title, it changes.
 - Tag v0.1 points to 28b70b883a2285f0fde1759c04bcb3d438ed73de and is not an ancestor of origin/main. It is a lightweight tag. A diff against this tag lists commits the tag already contains; find the real release point on the branch before using it. This tag carries a published GitHub release. Deleting or force-moving it converts the release to a draft. Leave it; tag the next release correctly.
 <!-- liveness-sweep:end -->

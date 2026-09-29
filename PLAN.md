@@ -2,8 +2,9 @@
 
 ## Shape
 
-A menu-bar-only app (`LSUIElement`), event-driven, idle at zero cost. No polling
-loops except the deliberate one-second permission poll, which stops the moment
+A menu-bar-only app (`LSUIElement`). Most checks follow system events. A narrow
+two-second timer reads the frontmost app's window order, so a repeated Dock click
+cannot leave a fully covered window unnoticed. The permission poll stops when
 permission arrives.
 
 ```
@@ -15,6 +16,7 @@ AppDelegate ──owns──> VerdictModel ──produces──> Verdict ──r
      │                     └── WindowRescue            ──> repairs        └─ PermissionPanel
      │
      ├── EmptyAppWatch ──records──> OpenProblems ──asks──> VerdictModel.recheck()
+     │        └── WindowOcclusion ──> raise, then center one covered window
      ├── NSStatusItem + NSPopover
      ├── RegisterEventHotKey (⌥⌘R)
      ├── NSWorkspace.didWakeNotification
@@ -53,6 +55,26 @@ failure the app exists to correct.
 window scans. `EmptyAppWatch` pushes observations into `OpenProblems`, which
 re-validates them during the same recheck. A missing permission keeps the last
 honest observation. It never becomes an all-clear that the app did not earn.
+
+The panel's "Missing an app?" menu selects a running regular app by process ID.
+`VerdictModel.findSelectedApp` calls `WindowRescue.gather(pid:)`, then centers
+one substantial window on the current screen. This covers windows hidden behind
+another app's floating panel even when their bounds are on-screen.
+When the app has no window, it sends one reopen request and checks after the
+repair settle delay. A persistent problem enters `OpenProblems`; an app with a
+window gets a cautious status because window geometry cannot prove which set of
+windows the person sees. The panel stays open while the chosen app comes forward.
+
+`WindowOcclusion` first reads ordered on-screen window metadata. It considers
+an app covered only when every usable window is at least 95% under a window
+from another process. Window alpha describes the whole window, so a transparent
+overlay can still appear opaque in this list. A system-wide Accessibility hit
+test at interior points vetoes a cover when the target app is reachable there.
+It reads no pixels or window titles. `EmptyAppWatch` checks after activation
+and every two seconds while the app stays frontmost. It tries raising the app
+before moving one window. It waits for the window order to settle before
+reporting failure. It ends an automatic warning when the app becomes reachable
+or the person switches apps, and closes a panel opened only for that warning.
 
 Repairs trigger an immediate recheck and one settled recheck after one second.
 The immediate pass keeps a live problem on screen. The settled pass catches an
@@ -110,8 +132,9 @@ the symptom would be disabled by the very fault the app is reporting.
 | Screen plugged/unplugged | Biggest single cause; 2s delay to let macOS settle |
 | OS version changed | The recurring job |
 
-No timer, no Dock-click watcher. Dock clicks are indistinguishable from Cmd-Tab
-via public API, and the event-tap workaround has a Tahoe code-signing race.
+No Dock-click input watcher. Dock clicks are indistinguishable from Cmd-Tab via
+the existing activation event. The two-second frontmost-window check reads only
+window bounds and order; it does not record clicks or window contents.
 
 ## Rendering
 

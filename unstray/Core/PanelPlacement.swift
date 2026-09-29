@@ -26,6 +26,18 @@ enum PanelPlacement {
     /// Space kept between the visible panel and the edge of the screen.
     static let margin: CGFloat = 8
 
+    /// Room left for the panel chrome when the content starts to scroll.
+    static let contentChrome: CGFloat = 80
+
+    /// Tallest content the panel may use on this display, before it scrolls.
+    ///
+    /// The main screen's height is the wrong number when the panel is on a
+    /// shorter one. That is how a problem panel still falls off the bottom
+    /// after clamping has pinned its top.
+    static func maxContentHeight(visibleHeight: CGFloat) -> CGFloat {
+        max(320, visibleHeight - contentChrome)
+    }
+
     /// One display, reduced to the only two rectangles that decide anything.
     ///
     /// Plain rectangles rather than `NSScreen`, so a three-monitor desk can be
@@ -122,6 +134,7 @@ enum PanelPlacement {
         var r = panel
 
         if r.width >= bounds.width - margin * 2 {
+            r.size.width = max(1, bounds.width - margin * 2)
             r.origin.x = bounds.minX + margin
         } else {
             if r.maxX > bounds.maxX - margin { r.origin.x = bounds.maxX - r.width - margin }
@@ -129,7 +142,10 @@ enum PanelPlacement {
         }
 
         if r.height >= bounds.height - margin * 2 {
-            // Pin to the top: the headline matters more than the buttons.
+            // Pin to the top and shrink: the headline matters more than the
+            // buttons, and a full-height panel still hanging off the bottom
+            // is the crop this app exists to notice.
+            r.size.height = max(1, bounds.height - margin * 2)
             r.origin.y = bounds.maxY - r.height - margin
         } else {
             if r.maxY > bounds.maxY - margin { r.origin.y = bounds.maxY - r.height - margin }

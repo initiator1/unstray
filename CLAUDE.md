@@ -65,6 +65,7 @@ unstray/Core/
   SettingsCheck.swift    The three load-bearing macOS settings.
   ScreenSpace.swift      Converts coordinates and works with rectangles.
   WindowUse.swift        Decides whether a person can use one window where it is.
+  WindowOcclusion.swift  Detects a frontmost app fully covered by another window.
   WindowScan.swift       Finds windows beyond or mostly past a screen edge.
   WindowRescue.swift     Moves them back. AX + the Carbon shim.
   ForceQuitWindow.swift  Opens Force Quit through System Events, with a fallback.
@@ -150,6 +151,11 @@ All three silently flip during macOS updates. That is the recurring job.
   to it by analogy with `spans-displays`, which genuinely needs one.
 - **AX sees only the current Space; CGWindowList sees all Spaces but cannot
   move anything.** Any real work needs both, correlated.
+- **Window alpha does not prove that pixels are covered.** On 2026-09-29, an
+  invisible, mouse-ignoring test window covered ChatGPT's full rectangle in
+  `CGWindowList` with alpha 1. A system-wide AX hit test still reached ChatGPT.
+  `WindowOcclusion` uses that positive hit as a veto before moving or warning.
+  Automatic covered warnings also expire when the app becomes reachable.
 - **Window and screen rectangles use opposite vertical coordinates.**
   CGWindowList and AX measure down from the primary top-left. NSScreen measures
   up from the primary bottom-left. Every comparison must go through

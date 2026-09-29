@@ -1,8 +1,8 @@
 import Cocoa
 import ApplicationServices
 
-/// Notices when you switch to an app and nothing appears, and asks the app to
-/// show you something.
+/// Notices when you switch to an app and nothing appears. Also catches a
+/// frontmost app whose window remains covered after a repeated Dock click.
 ///
 /// ## Why this exists
 ///
@@ -26,12 +26,17 @@ final class EmptyAppWatch {
     /// Called when an app came forward and we could not make it usable.
     /// Carries the pid because a name cannot identify the same process later.
     var onUnfixable: ((String, pid_t, Usability.Problem) -> Void)?
+    var onStillCovered: ((String, pid_t) -> Void)?
+    var onCoveredEpisodeEnded: ((pid_t) -> Void)?
 
     /// Some repairs return before the app has carried out what they requested.
     /// The watcher and the button path must allow the same short settle time.
     static let repairSettleDelay: TimeInterval = 1.0
 
     private var pending: DispatchWorkItem?
+    private var coverageTimer: Timer?
+    private var foregroundPID: pid_t?
+    private var coveredEpisodePID: pid_t?
 
     /// Long enough for an app that is genuinely opening a window to finish, short
     /// enough that a person has not yet decided the computer is broken.
@@ -48,6 +53,17 @@ final class EmptyAppWatch {
             else { return }
             self.appCameForward(app)
         }
+
+        // A second Dock click on an already active app sends no new activation
+        // notification. Check only the frontmost app, and only for the narrow
+        // case where another opaque window covers all of its usable windows.
+        coverageTimer = Timer.scheduledTimer(withTimeInterval: 2.0,
+                                             repeats: true) { [weak self] _ in
+            self?.checkFrontmostCoverage()
+        }
+        if let app = NSWorkspace.shared.frontmostApplication {
+            appCameForward(app)
+        }
     }
 
     private func appCameForward(_ app: NSRunningApplication) {
@@ -61,6 +77,11 @@ final class EmptyAppWatch {
               app.processIdentifier != getpid(),
               !WindowlessByDesign.applies(to: app)
         else { return }
+
+        if foregroundPID != app.processIdentifier {
+            endCoveredEpisode()
+            foregroundPID = app.processIdentifier
+        }
 
         // One check at a time: switching apps quickly should not queue up work.
         pending?.cancel()
@@ -92,9 +113,11 @@ final class EmptyAppWatch {
         // Only worry about the app that is actually in front. If the person has
         // moved on, the moment has passed.
         guard NSWorkspace.shared.frontmostApplication?.processIdentifier
-                == app.processIdentifier,
-              let problem = Usability.problem(for: app)
-        else { return }
+                == app.processIdentifier else { return }
+        guard let problem = Usability.problem(for: app) else {
+            repairCoveredWindowIfNeeded(app)
+            return
+        }
 
         let name = app.localizedName ?? "That app"
         RepairLog.write(event: "app_unusable", detail: ["problem": label(problem)])
@@ -139,6 +162,87 @@ final class EmptyAppWatch {
             // instant that is identical to the bug. How patient to be, and
             // why, is in EmptyAppPatience.
             watchForWindow(app, name: name)
+        }
+    }
+
+    private func checkFrontmostCoverage() {
+        guard WindowRescue.hasPermission else { return }
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        if let pid = coveredEpisodePID,
+           WindowOcclusion.coveredWindow(pid: pid) == nil ||
+           (frontmost?.activationPolicy == .regular &&
+            frontmost?.processIdentifier != pid) {
+            endCoveredEpisode()
+        }
+        guard let app = frontmost,
+              app.activationPolicy == .regular,
+              app.processIdentifier != getpid(),
+              !WindowlessByDesign.applies(to: app) else { return }
+        if foregroundPID != app.processIdentifier {
+            endCoveredEpisode()
+            foregroundPID = app.processIdentifier
+        }
+        // CG window metadata is cheap. Only a positive result pays for the
+        // slower Accessibility checks or attempts to move a window.
+        guard WindowOcclusion.coveredWindow(pid: app.processIdentifier) != nil else { return }
+        guard Usability.problem(for: app) == nil else { return }
+        repairCoveredWindowIfNeeded(app)
+    }
+
+    private func endCoveredEpisode() {
+        guard let pid = coveredEpisodePID else { return }
+        coveredEpisodePID = nil
+        onCoveredEpisodeEnded?(pid)
+    }
+
+    private func repairCoveredWindowIfNeeded(_ app: NSRunningApplication) {
+        let pid = app.processIdentifier
+        guard WindowRescue.hasPermission,
+              coveredEpisodePID != pid,
+              WindowOcclusion.coveredWindow(pid: pid) != nil else { return }
+        coveredEpisodePID = pid
+        RepairLog.write(event: "app_covered")
+
+        // Raising keeps the person's chosen placement if macOS honors it.
+        // Center only when the window is still fully covered after that try.
+        WindowRescue.bringToFront(pid: pid)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            guard let self, !app.isTerminated,
+                  NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
+            else { return }
+            guard WindowOcclusion.coveredWindow(pid: pid) != nil else {
+                RepairLog.write(event: "app_covered_fixed", detail: ["method": "raise"])
+                return
+            }
+            let moved = WindowRescue.centerChosenWindow(pid: pid)
+            self.confirmCoveredRepair(app, moved: moved, checksLeft: 6)
+        }
+    }
+
+    private func confirmCoveredRepair(_ app: NSRunningApplication, moved: Bool,
+                                      checksLeft: Int) {
+        let pid = app.processIdentifier
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            guard let self, !app.isTerminated,
+                  NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
+            else { return }
+            if WindowOcclusion.coveredWindow(pid: pid) == nil {
+                if let problem = Usability.problem(for: app) {
+                    self.onUnfixable?(app.localizedName ?? "That app", pid, problem)
+                } else {
+                    RepairLog.write(event: "app_covered_fixed",
+                                    detail: ["method": "move", "movedWindow": moved])
+                }
+            } else if checksLeft > 0 {
+                // Window ordering can lag behind a successful AX move. A quick
+                // negative is not proof that the repair failed.
+                self.confirmCoveredRepair(app, moved: moved,
+                                          checksLeft: checksLeft - 1)
+            } else {
+                RepairLog.write(event: "app_covered_unfixed",
+                                detail: ["movedWindow": moved])
+                self.onStillCovered?(app.localizedName ?? "That app", pid)
+            }
         }
     }
 

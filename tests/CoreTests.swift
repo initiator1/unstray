@@ -88,6 +88,45 @@ func testWindowFiltering() {
           isRealWindow(width: 200, height: 150, layer: 0))
 }
 
+func testWindowOcclusion() {
+    print("\nwindows covered by another app")
+    let screen = [CGRect(x: 0, y: 0, width: 3008, height: 1692)]
+    let calculator = WindowOcclusion.Window(pid: 10, layer: 0, alpha: 1,
+        frame: CGRect(x: 2728, y: 213, width: 230, height: 408))
+    let aria = WindowOcclusion.Window(pid: 20, layer: 3, alpha: 1,
+        frame: CGRect(x: 2672, y: 31, width: 336, height: 1661))
+    check("a full-height panel can hide an in-bounds Calculator window",
+          WindowOcclusion.coveredWindow(pid: 10, in: [aria, calculator],
+                                        screens: screen) == calculator.frame)
+    check("an unreachable point confirms a fully covered window",
+          WindowOcclusion.confirmedCoveredWindow(pid: 10,
+              in: [aria, calculator], screens: screen,
+              appAtPoint: { _ in false }) == calculator.frame)
+    check("a reachable app window vetoes an opaque rectangle's false alarm",
+          WindowOcclusion.confirmedCoveredWindow(pid: 10,
+              in: [aria, calculator], screens: screen,
+              appAtPoint: { _ in true }) == nil)
+    check("a Calculator window in front is visible",
+          WindowOcclusion.coveredWindow(pid: 10, in: [calculator, aria],
+                                        screens: screen) == nil)
+    let partial = WindowOcclusion.Window(pid: 20, layer: 0, alpha: 1,
+        frame: CGRect(x: 2800, y: 31, width: 208, height: 1661))
+    check("partial overlap leaves the person's placement alone",
+          WindowOcclusion.coveredWindow(pid: 10, in: [partial, calculator],
+                                        screens: screen) == nil)
+    let transparent = WindowOcclusion.Window(pid: 20, layer: 3, alpha: 0.4,
+        frame: aria.frame)
+    check("transparent overlays do not trigger a rescue",
+          WindowOcclusion.coveredWindow(pid: 10, in: [transparent, calculator],
+                                        screens: screen) == nil)
+    let second = WindowOcclusion.Window(pid: 10, layer: 0, alpha: 1,
+        frame: CGRect(x: 400, y: 300, width: 500, height: 400))
+    check("one visible window makes the app usable",
+          WindowOcclusion.coveredWindow(pid: 10,
+                                        in: [aria, calculator, second],
+                                        screens: screen) == nil)
+}
+
 // MARK: - Settings interpretation
 //
 // The three flags, and what "absent" means for each. Getting a default backwards
@@ -389,8 +428,8 @@ func testProblemAge() {
     let emptyFresh = ProblemAge.wording(appName: "Notes",
                                          kind: .nothingToShow,
                                          age: 0)
-    check("a fresh empty headline names the click",
-          emptyFresh.headline == "You clicked Notes and nothing came up.")
+    check("a fresh empty headline fits a Dock click or a chosen app",
+          emptyFresh.headline == "You tried to open Notes, but nothing came up.")
     check("a fresh empty explanation names the repeated click",
           firstSentence(emptyFresh.explanation)
               == "This is a bug in macOS, and clicking more times will not help.")
@@ -757,6 +796,17 @@ func testClampArithmetic() {
     check("a panel taller than the screen is pinned to the top",
           pinned.maxY == builtIn.maxY - 8,
           "the headline matters more than the buttons")
+    check("and it is also shortened so it does not hang off the bottom",
+          inside(pinned, builtIn),
+          "panel \(pinned) vs visible \(builtIn)")
+
+    let shortScreen = display(0, 0, 1280, 600).visible
+    let tallMain = display(0, 0, 1920, 1080).visible
+    check("the height cap uses the screen the panel is on, not the taller main one",
+          PanelPlacement.maxContentHeight(visibleHeight: shortScreen.height)
+              < PanelPlacement.maxContentHeight(visibleHeight: tallMain.height))
+    check("a 630pt problem panel is capped on a short display",
+          PanelPlacement.maxContentHeight(visibleHeight: shortScreen.height) < 630)
 }
 
 // MARK: - Is the app broken, or just opening?
@@ -931,6 +981,7 @@ func testWindowlessByDesign() {
 print("unstray core tests")
 testReachability()
 testWindowFiltering()
+testWindowOcclusion()
 testSettings()
 testSeverityOrder()
 testRepairOutcome()

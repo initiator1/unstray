@@ -52,9 +52,9 @@ assumes fluency the user does not have.
 
 ## What it does
 
-**Answers one question.** Open it and it says whether anything is wrong right
-now. If nothing is, it says so in one sentence and offers nothing else. If
-something is, it shows exactly one problem — the worst one — with one button.
+**Answers one question.** Open it and it says whether it found a problem right
+now. If something is wrong, it shows the worst problem with one main button.
+The quiet panel also lets the person name an app that still will not appear.
 
 **Watches three settings** that decide whether macOS can lose your things, and
 notices when a macOS update changes them behind your back.
@@ -65,6 +65,22 @@ and brings them back to the screen you are looking at.
 **A rescue key (⌥⌘R)** that gathers whatever app you are trying to reach onto
 the screen you are using — unminimizing, unhiding, and dragging back anything
 that has wandered off.
+
+**A "Missing an app?" choice** for cases the automatic check cannot prove.
+It lists running apps, then asks macOS to bring the chosen app forward. If no
+window exists, it asks the app to open one and checks again. It says when a
+window exists but may be in another set of windows; it does not claim to see
+what is visible to the person.
+For a named app, it may move one window to the center of the current screen.
+This handles a window covered by a floating panel.
+
+**Checks the active app automatically.** After an app comes forward, unstray
+checks whether another window fully covers it. It also checks every two seconds
+while that app stays active. It raises the app first and moves one window only
+when the cover remains. A rectangle alone is not proof: an apparently solid
+overlay can be transparent. Unstray checks whether the app can be reached at a
+point inside its window before acting. An automatic warning clears if the app
+becomes reachable later. The named-app choice stays available as a fallback.
 
 **Explains, every time.** Never "window off-screen at -12000,12485". Instead:
 "Your Notes are still open — they just moved to where your other monitor used
@@ -86,16 +102,14 @@ would make someone feel they had broken something.
 fault." A beginner's default assumption is that they caused it. Correcting that
 is the single most useful sentence on the screen.
 
-**A key press, not a watcher.** The original idea was to detect repeated Dock
-clicks. macOS provides no way to tell a Dock click from Cmd-Tab or Spotlight,
-and the event-tap workaround has a documented Tahoe code-signing race that
-silently disables it. More importantly, pressing a key makes unstray frontmost —
-which is exactly the state macOS requires before one app may bring another
-forward. The hotkey works *because* of how the OS behaves, not despite it.
+**Watch the result, not the Dock click.** The activation event cannot tell a
+Dock click from Cmd-Tab, and a second click on an active app may send no event.
+Unstray checks whether the frontmost app's windows are fully covered instead.
+The hotkey and named-app choice remain explicit ways to try again.
 
-**Move the person to the window, never the window to the person.** Moving a
-window across Spaces needs private APIs, SIP disabled, and an NVRAM boot-arg on
-Apple Silicon. Not worth a security downgrade for a window bug.
+**Do not move windows across Spaces.** That needs private APIs, SIP disabled,
+and an NVRAM boot-arg on Apple Silicon. Not worth a security downgrade for a
+window bug. A named-app request can move one window within the current Space.
 
 **Never fail silently.** If the app cannot help, it says so. Silently doing
 nothing is the exact bug it exists to fix.

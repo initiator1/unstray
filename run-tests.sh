@@ -21,8 +21,12 @@ swiftc -o "$OUT/tests" \
     unstray/Core/PanelPlacement.swift \
     unstray/Core/ScreenSpace.swift \
     unstray/Core/WindowUse.swift \
+    unstray/Core/WindowOcclusion.swift \
     unstray/Core/WindowlessByDesign.swift \
     unstray/Core/EmptyAppPatience.swift \
     unstray/Core/ProblemFate.swift \
-    "$OUT/main.swift" 2>&1 | grep -E "error" && exit 1
+    "$OUT/main.swift" >"$OUT/compile.log" 2>&1 || {
+        cat "$OUT/compile.log"
+        exit 1
+    }
 "$OUT/tests"
