@@ -72,6 +72,9 @@ an app covered only when every usable window is at least 95% under a window
 from another process. Window alpha describes the whole window, so a transparent
 overlay can still appear opaque in this list. A system-wide Accessibility hit
 test at interior points vetoes a cover when the target app is reachable there.
+Every hit test must succeed before automatic movement; a failed query means
+visibility is unknown. A macOS screenshot selection pauses coverage checks.
+Its full-screen shield reports alpha 1 while the app underneath stays frontmost.
 It reads no pixels or window titles. `EmptyAppWatch` checks after activation
 and every two seconds while the app stays frontmost. It tries raising the app
 before moving one window. It waits for the window order to settle before

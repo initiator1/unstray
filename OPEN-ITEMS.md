@@ -3,6 +3,42 @@
 Things known to be unfinished or unwatched. Add a date and enough context to act
 without the conversation that found it.
 
+## Screenshot capture made Unstray move a visible Chrome window — repaired locally 2026-09-29
+
+BOSS's 07:32:53 screenshot showed Chrome visible while Unstray 0.3 build 5
+said another app covered it. The MX Master 3S global profile has a
+Control-Shift-Command-4 screenshot shortcut assignment. The exact physical
+button was not independently tested. Unstray's local log recorded
+`app_covered` at 07:32:36 and `app_covered_unfixed` with `movedWindow:true`
+at 07:32:40; the warning cleared at 07:32:54. The same move recurred three
+times at 07:35. The Chrome frame after the incident was (480, 130),
+2048 × 1463 on the 3008 × 1692 display. This matches
+`WindowRescue.placeInside` centering that size. Unstray's move caused the
+placement loss; the prior maximized frame was not captured directly.
+
+In a local interactive capture reproduction, `screencapture` put an alpha-1,
+full-screen window at layer 1498 above the active app. That app remained
+frontmost. Unstray treated the temporary capture UI as evidence that the app
+was hidden in the incident; the log confirms that it then moved a window.
+The old code could also count a failed Accessibility query as cover evidence.
+Build 6 pauses automatic covered-window checks
+during a macOS capture session and treats failed Accessibility queries as
+unknown. The named-app fallback and real low-layer floating-panel rescue remain.
+
+Core tests pass 146/146, including the capture overlay and Calculator/Aria
+cover geometry cases. Apple accepted and stapled build 6. The installed executable
+matches the build, Gatekeeper accepts it, and PID 79788 launched from
+`/Applications/unstray.app` with login enabled. With the installed build
+running, the real Screenshot interface displayed its full-screen capture
+shield for several checks. No new `app_covered` or window move appeared in
+the event log, and Chrome's frame stayed fixed. The UI control could open
+Screenshot, but it could not press the physical MX Master 3S button. Chrome
+was restored with its window zoom action to (0, 31), 3008 × 1661.
+
+Next owner: agent if BOSS sees another false warning or placement change.
+Capture the exact event time and window owner before changing the detector.
+The next login and the physical mouse-button path remain unverified.
+
 ## First click on "Missing an app?" can disappear — 2026-09-29
 
 BOSS reports that the app list flashes away on the first click and stays open
@@ -24,10 +60,11 @@ process launched from `/Applications/unstray.app`. Build 4 is preserved under
 `~/Library/Application Support/unstray/previous-apps/`. The app reports launch
 at login enabled; a fresh login was not tested.
 
-The first click after opening the installed panel is still unverified. The
+Build 6 supersedes build 5 locally and preserves its panel change. The first
+click after opening the installed panel is still unverified. The
 desktop control reached a panel that BOSS had already opened, but cannot open
 the menu-bar helper's closed popover for a fresh test. Next owner: BOSS can try
-one click on "Missing an app?" in build 5 and report whether the list stays
+one click on "Missing an app?" in build 6 and report whether the list stays
 open; the agent then checks that result and an app choice against the screen.
 
 ## Automatic covered-window recovery is installed locally — 2026-09-29
@@ -87,7 +124,7 @@ fixture shows the repair button and named-app message together. A second code
 review found no actionable defect in the fix. Apple accepted and stapled build 4.
 It was installed with a matching executable, and Gatekeeper accepted it. Build 3
 was preserved in `~/Library/Application Support/unstray/previous-apps/`.
-Build 5 now supersedes it. A named-app retry and the next login remain unverified.
+Build 6 now supersedes it. A named-app retry and the next login remain unverified.
 
 ## Panel height uses the screen it is on — installed locally 2026-09-29
 

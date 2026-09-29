@@ -82,6 +82,8 @@ when the cover remains. A rectangle alone is not proof: an apparently solid
 overlay can be transparent. Unstray checks whether the app can be reached at a
 point inside its window before acting. An automatic warning clears if the app
 becomes reachable later. The named-app choice stays available as a fallback.
+An active screenshot selection pauses automatic covered-window repair. Failed
+Accessibility hit tests leave visibility unknown and do not move a window.
 
 **Explains, every time.** Never "window off-screen at -12000,12485". Instead:
 "Your Notes are still open — they just moved to where your other monitor used

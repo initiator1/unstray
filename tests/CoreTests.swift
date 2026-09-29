@@ -106,6 +106,21 @@ func testWindowOcclusion() {
           WindowOcclusion.confirmedCoveredWindow(pid: 10,
               in: [aria, calculator], screens: screen,
               appAtPoint: { _ in true }) == nil)
+    check("a failed accessibility hit test cannot prove a window is covered",
+          WindowOcclusion.confirmedCoveredWindow(pid: 10,
+              in: [aria, calculator], screens: screen,
+              appAtPoint: { _ in nil }) == nil)
+    let capture = WindowOcclusion.Window(pid: 30, layer: 1498, alpha: 1,
+        frame: screen[0], ownerName: "screencapture")
+    check("the interactive screenshot shield pauses automatic recovery",
+          WindowOcclusion.confirmedCoveredWindow(pid: 10,
+              in: [capture, aria, calculator], screens: screen,
+              appAtPoint: { _ in false }) == nil)
+    let screenshot = WindowOcclusion.Window(pid: 31, layer: 1498, alpha: 1,
+        frame: screen[0], ownerName: "Screenshot")
+    check("the Screenshot app also pauses automatic recovery",
+          WindowOcclusion.coveredWindow(pid: 10,
+              in: [screenshot, aria, calculator], screens: screen) == nil)
     check("a Calculator window in front is visible",
           WindowOcclusion.coveredWindow(pid: 10, in: [calculator, aria],
                                         screens: screen) == nil)

@@ -12,6 +12,25 @@ enum WindowOcclusion {
         let layer: Int
         let alpha: CGFloat
         let frame: CGRect
+        let ownerName: String
+
+        init(pid: pid_t, layer: Int, alpha: CGFloat, frame: CGRect,
+             ownerName: String = "") {
+            self.pid = pid
+            self.layer = layer
+            self.alpha = alpha
+            self.frame = frame
+            self.ownerName = ownerName
+        }
+    }
+
+    private static func isCaptureInterface(_ window: Window) -> Bool {
+        // The interactive macOS snip shield is a full-screen window with alpha
+        // 1 at layer 1498. It deliberately takes input while the app underneath
+        // stays frontmost. Its rectangle must not trigger a window repair.
+        window.layer > Int(CGWindowLevelForKey(.statusWindow)) &&
+            (window.ownerName == "screencapture" ||
+             window.ownerName == "Screenshot")
     }
 
     private static func targets(pid: pid_t, in windows: [Window],
@@ -29,6 +48,9 @@ enum WindowOcclusion {
     /// A partial overlap is normal and must never rearrange a person's desk.
     static func coveredWindow(pid: pid_t, in frontToBack: [Window],
                               screens: [CGRect]) -> CGRect? {
+        // A capture session temporarily covers the entire desktop. Wait for it
+        // to end before judging any app, including windows behind other panels.
+        guard !frontToBack.contains(where: isCaptureInterface) else { return nil }
         let targets = targets(pid: pid, in: frontToBack, screens: screens)
         guard !targets.isEmpty else { return nil }
 
@@ -62,25 +84,27 @@ enum WindowOcclusion {
     /// the person can still reach it, so do not move it or warn.
     static func confirmedCoveredWindow(pid: pid_t, in frontToBack: [Window],
                                        screens: [CGRect],
-                                       appAtPoint: (CGPoint) -> Bool) -> CGRect? {
+                                       appAtPoint: (CGPoint) -> Bool?) -> CGRect? {
         guard let candidate = coveredWindow(pid: pid, in: frontToBack,
                                             screens: screens) else { return nil }
         let visibleParts = targets(pid: pid, in: frontToBack, screens: screens)
             .map { ScreenSpace.visiblePart(of: $0.element.frame, screens: screens) }
             .sorted { $0.width * $0.height > $1.width * $1.height }
-        func exposed(_ point: CGPoint) -> Bool {
-            screens.contains(where: { $0.contains(point) }) && appAtPoint(point)
+        func hit(_ point: CGPoint) -> Bool? {
+            guard screens.contains(where: { $0.contains(point) }) else { return nil }
+            return appAtPoint(point)
         }
         // Bound the number of Accessibility messages for apps with many windows.
         for visible in visibleParts.prefix(4) {
-            if exposed(CGPoint(x: visible.midX, y: visible.midY)) { return nil }
+            guard hit(CGPoint(x: visible.midX, y: visible.midY)) == false
+            else { return nil }
         }
         if let largest = visibleParts.first {
             for x in [CGFloat(0.25), 0.75] {
                 for y in [CGFloat(0.25), 0.75] {
                     let point = CGPoint(x: largest.minX + largest.width * x,
                                         y: largest.minY + largest.height * y)
-                    if exposed(point) { return nil }
+                    guard hit(point) == false else { return nil }
                 }
             }
         }
@@ -100,7 +124,8 @@ enum WindowOcclusion {
             else { return nil }
             let alpha = (item[kCGWindowAlpha as String] as? CGFloat) ?? 1
             return Window(pid: owner, layer: layer, alpha: alpha,
-                          frame: CGRect(x: x, y: y, width: width, height: height))
+                          frame: CGRect(x: x, y: y, width: width, height: height),
+                          ownerName: item[kCGWindowOwnerName as String] as? String ?? "")
         }
         let system = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(system, 0.2)
@@ -109,9 +134,10 @@ enum WindowOcclusion {
             var element: AXUIElement?
             guard AXUIElementCopyElementAtPosition(system, Float(point.x),
                                                    Float(point.y), &element) == .success,
-                  let element else { return false }
+                  let element else { return nil }
             var hitPID: pid_t = 0
-            return AXUIElementGetPid(element, &hitPID) == .success && hitPID == pid
+            guard AXUIElementGetPid(element, &hitPID) == .success else { return nil }
+            return hitPID == pid
         }
     }
 }
