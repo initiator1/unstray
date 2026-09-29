@@ -31,27 +31,35 @@ struct VerdictView: View {
     var visibleHeight: CGFloat = NSScreen.main?.visibleFrame.height ?? 800
 
     @State private var contentHeight: CGFloat = 0
+    @State private var showingAppChoices = false
 
     @ViewBuilder
     private var panelContent: some View {
-        switch verdict {
-        case .needsPermission:
-            if awaitingPermission {
-                PermissionPendingPanel(
-                    onRecheck: onRecheck,
-                    onOpenSettings: onOpenPrivacySettings,
-                    onDismiss: onDismiss
-                )
-            } else {
-                PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
+        if showingAppChoices {
+            AppChoicePanel(apps: selectableApps) { pid in
+                showingAppChoices = false
+                onChooseApp(pid)
             }
-        case .allWell(let when):
-            AllWellPanel(lastChecked: when, selectedAppStatus: selectedAppStatus,
-                         onRecheck: onRecheck, onDismiss: onDismiss)
-        case .somethingWrong(let primary, let also):
-            ProblemPanel(finding: primary, alsoFound: also,
-                         selectedAppStatus: selectedAppStatus,
-                         onRepair: onRepair, onDismiss: onDismiss)
+        } else {
+            switch verdict {
+            case .needsPermission:
+                if awaitingPermission {
+                    PermissionPendingPanel(
+                        onRecheck: onRecheck,
+                        onOpenSettings: onOpenPrivacySettings,
+                        onDismiss: onDismiss
+                    )
+                } else {
+                    PermissionPanel(onGrant: onGrantPermission, onLater: onDismiss)
+                }
+            case .allWell(let when):
+                AllWellPanel(lastChecked: when, selectedAppStatus: selectedAppStatus,
+                             onRecheck: onRecheck, onDismiss: onDismiss)
+            case .somethingWrong(let primary, let also):
+                ProblemPanel(finding: primary, alsoFound: also,
+                             selectedAppStatus: selectedAppStatus,
+                             onRepair: onRepair, onDismiss: onDismiss)
+            }
         }
     }
 
@@ -76,6 +84,7 @@ struct VerdictView: View {
                         }
                     )
             }
+            .id(showingAppChoices)
             // Sizes to the content until the content outgrows the screen.
             .frame(height: min(max(contentHeight, 1), maxPanelHeight))
             .onPreferenceChange(PanelHeightKey.self) { contentHeight = $0 }
@@ -86,18 +95,10 @@ struct VerdictView: View {
             // panel above it is scrolling.
             VStack(alignment: .leading, spacing: 9) {
                 if canChooseApp {
-                    Menu("Missing an app?") {
-                        ForEach(NSWorkspace.shared.runningApplications
-                            .filter { $0.activationPolicy == .regular &&
-                                      $0.processIdentifier != getpid() &&
-                                      !WindowlessByDesign.applies(to: $0) }
-                            .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") },
-                            id: \.processIdentifier) { app in
-                            Button(app.localizedName ?? "Unnamed app") {
-                                onChooseApp(app.processIdentifier)
-                            }
-                        }
+                    Button(showingAppChoices ? "Back to result" : "Missing an app?") {
+                        showingAppChoices.toggle()
                     }
+                    .buttonStyle(.plain)
                     .font(D.body(13))
                     .foregroundStyle(D.inkSoft)
                     .help("Choose the open app whose window you cannot see.")
@@ -119,6 +120,7 @@ struct VerdictView: View {
         }
         .frame(width: D.panelWidth)
         .background(D.bg)
+        .onDisappear { showingAppChoices = false }
     }
 
     /// The support link shows only on the all-clear panel.
@@ -130,12 +132,70 @@ struct VerdictView: View {
     /// cannot afford to spend. The all-clear panel asks for nothing, and it is
     /// the one a person sees almost every time.
     private var showsSupportLink: Bool {
-        if case .allWell = verdict, selectedAppStatus == nil { return true }
+        if case .allWell = verdict,
+           selectedAppStatus == nil,
+           !showingAppChoices { return true }
         return false
     }
 
     private var canChooseApp: Bool {
         WindowRescue.hasPermission
+    }
+
+    private var selectableApps: [NSRunningApplication] {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular &&
+                      $0.processIdentifier != getpid() &&
+                      !WindowlessByDesign.applies(to: $0) }
+            .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") }
+    }
+}
+
+private struct AppChoicePanel: View {
+    let apps: [NSRunningApplication]
+    let onChoose: (pid_t) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Which app can't you see?")
+                .font(D.display(21))
+                .foregroundStyle(D.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Choose an open app. I'll try to bring its window forward.")
+                .font(D.body(13))
+                .foregroundStyle(D.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if apps.isEmpty {
+                Text("No open apps are available to choose.")
+                    .font(D.body(13))
+                    .foregroundStyle(D.inkSoft)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(apps, id: \.processIdentifier) { app in
+                        Button {
+                            onChoose(app.processIdentifier)
+                        } label: {
+                            HStack {
+                                Text(app.localizedName ?? "Unnamed app")
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .accessibilityHidden(true)
+                            }
+                            .font(D.body(13))
+                            .foregroundStyle(D.ink)
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        Divider().overlay(D.hairline)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, D.pad)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
     }
 }
 

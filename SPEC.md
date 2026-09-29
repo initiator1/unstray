@@ -67,7 +67,8 @@ the screen you are using — unminimizing, unhiding, and dragging back anything
 that has wandered off.
 
 **A "Missing an app?" choice** for cases the automatic check cannot prove.
-It lists running apps, then asks macOS to bring the chosen app forward. If no
+It opens a list inside the panel on one click. The list shows running apps,
+then asks macOS to bring the chosen app forward. If no
 window exists, it asks the app to open one and checks again. It says when a
 window exists but may be in another set of windows; it does not claim to see
 what is visible to the person.

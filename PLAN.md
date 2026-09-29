@@ -56,7 +56,9 @@ window scans. `EmptyAppWatch` pushes observations into `OpenProblems`, which
 re-validates them during the same recheck. A missing permission keeps the last
 honest observation. It never becomes an all-clear that the app did not earn.
 
-The panel's "Missing an app?" menu selects a running regular app by process ID.
+The panel's "Missing an app?" button opens an app list inside the same panel.
+That list selects a running regular app by process ID. It avoids a separate
+popup menu whose first click could disappear while the panel resized.
 `VerdictModel.findSelectedApp` calls `WindowRescue.gather(pid:)`, then centers
 one substantial window on the current screen. This covers windows hidden behind
 another app's floating panel even when their bounds are on-screen.

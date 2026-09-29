@@ -330,7 +330,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                                    displays: displays)
         else { return }
 
-        if let host = popover.contentViewController as? NSHostingController<VerdictHost> {
+        // Resize and move notifications can arrive during an interaction.
+        // Replacing the root view needlessly can discard transient view state.
+        // Only update it when the screen height actually changes.
+        if let host = popover.contentViewController as? NSHostingController<VerdictHost>,
+           host.rootView.visibleHeight != displays[i].visible.height {
             host.rootView = VerdictHost(
                 model: model,
                 onDismiss: host.rootView.onDismiss,

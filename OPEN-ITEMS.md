@@ -3,6 +3,33 @@
 Things known to be unfinished or unwatched. Add a date and enough context to act
 without the conversation that found it.
 
+## First click on "Missing an app?" can disappear — 2026-09-29
+
+BOSS reports that the app list flashes away on the first click and stays open
+on the second. The affected surface is the named-app fallback in the menu-bar
+panel. The running app was `/Applications/unstray.app`, version 0.3 build 4.
+A desktop-control click opened the list while the panel was already open; it
+could not test the first click after a fresh panel opening. The panel's frame
+observer unconditionally replaced its SwiftUI root view during opening and
+resizing. That can interrupt a temporary menu. Apple's documented transient
+popover behavior does not by itself explain the first-click failure.
+
+Build 5 changes the fallback to an app list inside the panel and only replaces
+the root view when the target screen height changes. This removes the separate
+menu window and preserves the existing screen-edge correction. Core tests pass
+143/143. A rendered app list fits the intended panel width, and an independent
+review found no new code defect. Apple accepted and stapled build 5. The
+installed executable matches the build, Gatekeeper accepts it, and the running
+process launched from `/Applications/unstray.app`. Build 4 is preserved under
+`~/Library/Application Support/unstray/previous-apps/`. The app reports launch
+at login enabled; a fresh login was not tested.
+
+The first click after opening the installed panel is still unverified. The
+desktop control reached a panel that BOSS had already opened, but cannot open
+the menu-bar helper's closed popover for a fresh test. Next owner: BOSS can try
+one click on "Missing an app?" in build 5 and report whether the list stays
+open; the agent then checks that result and an app choice against the screen.
+
 ## Automatic covered-window recovery is installed locally — 2026-09-29
 
 The first live picker test on 2026-09-28 found Calculator's window but did not
@@ -58,11 +85,9 @@ could vanish on background recheck, and a support link could appear beside a
 failure. Build 4 fixes all three. Core tests pass 143/143, and a rendered problem
 fixture shows the repair button and named-app message together. A second code
 review found no actionable defect in the fix. Apple accepted and stapled build 4.
-The installed executable matches the build; Gatekeeper accepts it. Build 3 is
-preserved in `~/Library/Application Support/unstray/previous-apps/`.
-The running process uses `/Applications/unstray.app`, and the enabled login item
-points there. The app logged its launch. Its real popover, a named-app retry,
-and the next login remain unverified.
+It was installed with a matching executable, and Gatekeeper accepted it. Build 3
+was preserved in `~/Library/Application Support/unstray/previous-apps/`.
+Build 5 now supersedes it. A named-app retry and the next login remain unverified.
 
 ## Panel height uses the screen it is on — installed locally 2026-09-29
 
