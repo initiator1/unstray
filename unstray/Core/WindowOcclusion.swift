@@ -24,13 +24,19 @@ enum WindowOcclusion {
         }
     }
 
+    /// Processes that draw the macOS screenshot interface.
+    static let screenshotOwners: Set<String> = [
+        "screencapture", "Screenshot", "screencaptureui"
+    ]
+
     private static func isCaptureInterface(_ window: Window) -> Bool {
         // The interactive macOS snip shield is a full-screen window with alpha
         // 1 at layer 1498. It deliberately takes input while the app underneath
-        // stays frontmost. Its rectangle must not trigger a window repair.
-        window.layer > Int(CGWindowLevelForKey(.statusWindow)) &&
-            (window.ownerName == "screencapture" ||
-             window.ownerName == "Screenshot")
+        // stays frontmost. The markup editor that opens from the thumbnail is
+        // an always-on-top window from screencaptureui at a lower layer, and it
+        // also sits over the frontmost app on purpose. While either is up, no
+        // window is lost, so nothing is judged.
+        window.layer > 0 && screenshotOwners.contains(window.ownerName)
     }
 
     private static func targets(pid: pid_t, in windows: [Window],

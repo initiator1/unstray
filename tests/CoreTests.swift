@@ -121,6 +121,11 @@ func testWindowOcclusion() {
     check("the Screenshot app also pauses automatic recovery",
           WindowOcclusion.coveredWindow(pid: 10,
               in: [screenshot, aria, calculator], screens: screen) == nil)
+    let markup = WindowOcclusion.Window(pid: 32, layer: 8, alpha: 1,
+        frame: screen[0], ownerName: "screencaptureui")
+    check("the always-on-top screenshot editor pauses automatic recovery",
+          WindowOcclusion.coveredWindow(pid: 10,
+              in: [markup, aria, calculator], screens: screen) == nil)
     check("a Calculator window in front is visible",
           WindowOcclusion.coveredWindow(pid: 10, in: [calculator, aria],
                                         screens: screen) == nil)
