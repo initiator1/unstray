@@ -58,8 +58,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Clicking an app IS the request to see it. When one comes forward with
         // nothing to show, fix it without asking; speak only if that fails.
         emptyAppWatch.onUnfixable = { [weak self] appName, pid, problem in
-            self?.model.noteUnusable(appName: appName, pid: pid, problem: problem)
-            self?.showPanel(sticky: true, keepVerdict: true)
+            guard let self else { return }
+            self.model.noteUnusable(appName: appName, pid: pid, problem: problem)
+            // Open by itself only to show the problem. The recheck above is the
+            // one author of the verdict; if it no longer sees anything wrong,
+            // opening would interrupt someone to say "Nothing looks out of
+            // place", which is worse than staying quiet.
+            guard case .somethingWrong = self.model.verdict else {
+                RepairLog.write(event: "auto_open_skipped",
+                                detail: ["reason": "recheck found nothing"])
+                return
+            }
+            self.showPanel(sticky: true, keepVerdict: true)
         }
         emptyAppWatch.onStillCovered = { [weak self] appName, pid in
             guard let self else { return }

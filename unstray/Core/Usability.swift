@@ -65,8 +65,10 @@ enum Usability {
             $0.report.verdict != .notSomethingYouWereWorkingIn
         }
 
-        // Nothing at all to look at.
-        guard !windowReports.isEmpty else { return .nothingToShow }
+        // Nothing at all to look at, unless it is showing a floating window.
+        guard !windowReports.isEmpty else {
+            return hasRaisedWindowOnScreen(relatedPIDs(of: app)) ? nil : .nothingToShow
+        }
 
         // Everything is off every screen — the stranded case, handled elsewhere
         // by WindowScan, so not reported again here.
@@ -146,11 +148,54 @@ enum Usability {
         where other.processIdentifier != app.processIdentifier {
             guard let p = other.bundleURL?.path else { continue }
             // Helper inside this app, or this app inside a shared parent bundle.
-            if p.hasPrefix(base + "/") || base.hasPrefix(p + "/") {
+            // The same bundle under a second record counts too: a launcher
+            // script that `exec`s a command-line tool (Scrcpy.app) leaves
+            // LaunchServices one record with no process and one with it.
+            if p == base || p.hasPrefix(base + "/") || base.hasPrefix(p + "/") {
                 pids.append(other.processIdentifier)
             }
         }
         return pids
+    }
+
+    /// The record a person actually clicked can point at no process at all.
+    /// Scrcpy.app is a shell script that replaces itself with `scrcpy`, and
+    /// LaunchServices then reports the app with pid -1 beside the real one.
+    /// Judging the pid -1 record found no windows, warned, and the panel's
+    /// own recheck then found no such process and opened saying "Nothing
+    /// looks out of place". Resolve to a listed live process, or judge nothing.
+    static func liveProcess(for app: NSRunningApplication) -> NSRunningApplication? {
+        if app.processIdentifier > 0 { return app }
+        guard let path = app.bundleURL?.path else { return nil }
+        if let listed = NSWorkspace.shared.runningApplications.first(where: {
+            $0.processIdentifier > 0 && $0.bundleURL?.path == path
+        }) { return listed }
+        // Otherwise there is no process to judge. Even asking by the real pid
+        // returns the same pid -1 record, so no question about it can be
+        // answered honestly. Say nothing.
+        return nil
+    }
+
+    /// True when the app shows a substantial window above the normal layer:
+    /// an always-on-top editor such as the screenshot markup window, or a
+    /// floating player. The person can see it, so the app is not empty.
+    static func hasRaisedWindowOnScreen(_ pids: [pid_t]) -> Bool {
+        guard let list = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
+        ) as? [[String: Any]] else { return false }
+        let screens = ScreenSpace.screens()
+        return list.contains { w in
+            guard let owner = w[kCGWindowOwnerPID as String] as? pid_t,
+                  pids.contains(owner),
+                  let layer = w[kCGWindowLayer as String] as? Int, layer > 0,
+                  ((w[kCGWindowAlpha as String] as? CGFloat) ?? 1) > 0.05,
+                  let b = w[kCGWindowBounds as String] as? [String: CGFloat],
+                  let x = b["X"], let y = b["Y"], let wd = b["Width"], let h = b["Height"]
+            else { return false }
+            let frame = CGRect(x: x, y: y, width: wd, height: h)
+            return WindowUse.isSomethingYouWereWorkingIn(frame, scope: .oneChosenApp)
+                && !ScreenSpace.visiblePart(of: frame, screens: screens).isNull
+        }
     }
 
     /// Every layer-0 window owned by this process, judged from one list read.

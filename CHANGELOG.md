@@ -2,6 +2,11 @@
 
 ## 0.3 — unreleased
 
+- **The panel no longer opens by itself to say nothing is wrong.** It opens
+  only when its own fresh check still sees the problem. Apps started by a
+  launcher script, such as a Scrcpy.app wrapper, no longer look empty, and an
+  always-on-top window such as the screenshot editor counts as something the
+  app is showing.
 - **Unstray notices a covered active app without a second choice.** It checks
   the active app after a switch and every two seconds while it stays active.
   It raises the app first, then moves one window only if another app still

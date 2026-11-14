@@ -33,6 +33,12 @@ final class EmptyAppWatch {
     /// The watcher and the button path must allow the same short settle time.
     static let repairSettleDelay: TimeInterval = 1.0
 
+    /// The live process behind the app in front. See Usability.liveProcess.
+    static var frontPID: pid_t? {
+        NSWorkspace.shared.frontmostApplication
+            .flatMap(Usability.liveProcess(for:))?.processIdentifier
+    }
+
     private var pending: DispatchWorkItem?
     private var coverageTimer: Timer?
     private var foregroundPID: pid_t?
@@ -51,7 +57,8 @@ final class EmptyAppWatch {
                   let app = note.userInfo?[NSWorkspace.applicationUserInfoKey]
                       as? NSRunningApplication
             else { return }
-            self.appCameForward(app)
+            guard let live = Usability.liveProcess(for: app) else { return }
+            self.appCameForward(live)
         }
 
         // A second Dock click on an already active app sends no new activation
@@ -61,7 +68,8 @@ final class EmptyAppWatch {
                                              repeats: true) { [weak self] _ in
             self?.checkFrontmostCoverage()
         }
-        if let app = NSWorkspace.shared.frontmostApplication {
+        if let front = NSWorkspace.shared.frontmostApplication,
+           let app = Usability.liveProcess(for: front) {
             appCameForward(app)
         }
     }
@@ -106,13 +114,13 @@ final class EmptyAppWatch {
         // appeared, so saying that nothing came up would be false.
         return !windows.contains {
             !$0.visible.isNull
-        }
+        } && !Usability.hasRaisedWindowOnScreen(Usability.relatedPIDs(of: app))
     }
 
     private func checkAndRepair(_ app: NSRunningApplication) {
         // Only worry about the app that is actually in front. If the person has
         // moved on, the moment has passed.
-        guard NSWorkspace.shared.frontmostApplication?.processIdentifier
+        guard EmptyAppWatch.frontPID
                 == app.processIdentifier else { return }
         guard let problem = Usability.problem(for: app) else {
             repairCoveredWindowIfNeeded(app)
@@ -168,6 +176,7 @@ final class EmptyAppWatch {
     private func checkFrontmostCoverage() {
         guard WindowRescue.hasPermission else { return }
         let frontmost = NSWorkspace.shared.frontmostApplication
+            .flatMap(Usability.liveProcess(for:))
         if let pid = coveredEpisodePID,
            WindowOcclusion.coveredWindow(pid: pid) == nil ||
            (frontmost?.activationPolicy == .regular &&
@@ -208,7 +217,7 @@ final class EmptyAppWatch {
         WindowRescue.bringToFront(pid: pid)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             guard let self, !app.isTerminated,
-                  NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
+                  EmptyAppWatch.frontPID == pid
             else { return }
             guard WindowOcclusion.coveredWindow(pid: pid) != nil else {
                 RepairLog.write(event: "app_covered_fixed", detail: ["method": "raise"])
@@ -224,7 +233,7 @@ final class EmptyAppWatch {
         let pid = app.processIdentifier
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
             guard let self, !app.isTerminated,
-                  NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
+                  EmptyAppWatch.frontPID == pid
             else { return }
             if WindowOcclusion.coveredWindow(pid: pid) == nil {
                 if let problem = Usability.problem(for: app) {
@@ -257,7 +266,7 @@ final class EmptyAppWatch {
             let decision = EmptyAppPatience.step(
                 terminated: app.isTerminated,
                 showsSomethingNow: !self.showsNothing(app),
-                personMovedOn: NSWorkspace.shared.frontmostApplication?.processIdentifier
+                personMovedOn: EmptyAppWatch.frontPID
                     != app.processIdentifier,
                 stillStartingUp: Usability.isStillStartingUp(app),
                 alreadyAsked: askedAt != nil,
@@ -318,7 +327,7 @@ final class EmptyAppWatch {
             // Still not answering. Keep waiting, up to about six seconds.
             guard checksLeft > 0 else {
                 // Only bother them if they are still looking at it.
-                guard NSWorkspace.shared.frontmostApplication?.processIdentifier
+                guard EmptyAppWatch.frontPID
                         == app.processIdentifier else { return }
                 RepairLog.write(event: "app_unusable_unfixed",
                                 detail: ["problem": "notResponding"])

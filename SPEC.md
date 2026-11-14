@@ -150,3 +150,13 @@ sent a real ⌥⌘R: it brought the window back to the middle of the screen and
 wrote the rescue into its own log. The same window was rescued from a different
 screenful by the panel's own button. Both cases were built on purpose, since
 this machine has had nothing genuinely lost on it since the settings were fixed.
+
+## Opening by itself
+
+unstray opens its panel without being asked only when a fresh check confirms
+a problem. If the check that follows a failed repair finds nothing wrong, it
+logs `auto_open_skipped` and stays closed. A running-app record with no live
+process (a launcher script that `exec`s another program) is never judged. A
+substantial on-screen window above the normal layer counts as the app showing
+something.
+
