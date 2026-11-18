@@ -35,9 +35,15 @@ the event log, and Chrome's frame stayed fixed. The UI control could open
 Screenshot, but it could not press the physical MX Master 3S button. Chrome
 was restored with its window zoom action to (0, 31), 3008 × 1661.
 
-Next owner: agent if BOSS sees another false warning or placement change.
-Capture the exact event time and window owner before changing the detector.
-The next login and the physical mouse-button path remain unverified.
+On 2026-11-17, the macOS console record put the last login on November 10 at
+3:17:42 p.m. Pacific. Unstray logged `launched` at 3:17:59 p.m. with
+`launchesAtLogin` set to true. macOS recorded the process in that same second.
+These records strongly support automatic startup. The app log omits the caller.
+
+BOSS owns the physical MX Master 3S snip with Chrome in front. The agent marked
+the event log at 10:27:09 p.m. Pacific on November 17. After BOSS confirms the
+snip, check that interval for a covered-window warning or window move. If either
+recurs, record the event time and window owner before changing the detector.
 
 ## First click on "Missing an app?" can disappear — 2026-09-29
 
