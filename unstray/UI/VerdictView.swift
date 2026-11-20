@@ -54,10 +54,12 @@ struct VerdictView: View {
                 }
             case .allWell(let when):
                 AllWellPanel(lastChecked: when, selectedAppStatus: selectedAppStatus,
+                             onMissingApp: missingAppAction,
                              onRecheck: onRecheck, onDismiss: onDismiss)
             case .somethingWrong(let primary, let also):
                 ProblemPanel(finding: primary, alsoFound: also,
                              selectedAppStatus: selectedAppStatus,
+                             onMissingApp: missingAppAction,
                              onRepair: onRepair, onDismiss: onDismiss)
             }
         }
@@ -94,14 +96,15 @@ struct VerdictView: View {
             // The footer stays put, so Quit is always reachable even when the
             // panel above it is scrolling.
             VStack(alignment: .leading, spacing: 9) {
-                if canChooseApp {
-                    Button(showingAppChoices ? "Back to result" : "Missing an app?") {
-                        showingAppChoices.toggle()
+                // "Missing an app?" lives in the panel body now, where people
+                // look; the footer only offers the way back from the app list.
+                if canChooseApp && showingAppChoices {
+                    Button("Back to result") {
+                        showingAppChoices = false
                     }
                     .buttonStyle(.plain)
                     .font(D.body(13))
                     .foregroundStyle(D.inkSoft)
-                    .help("Choose the open app whose window you cannot see.")
                 }
                 HStack(spacing: 14) {
                     Text("unstray \(Bundle.main.shortVersion)")
@@ -141,6 +144,12 @@ struct VerdictView: View {
     /// Whether rescue may move another app's windows. Injected only by the
     /// offscreen renderer; the app always reads the live permission.
     var canChooseApp: Bool = WindowRescue.hasPermission
+
+    /// Opens the app list. nil hides the button: without the permission the
+    /// rescue cannot move anything, and a button must deliver what it says.
+    private var missingAppAction: (() -> Void)? {
+        canChooseApp ? { showingAppChoices = true } : nil
+    }
 
     private var selectableApps: [NSRunningApplication] {
         NSWorkspace.shared.runningApplications
@@ -220,6 +229,28 @@ private struct SupportLink: View {
     }
 }
 
+/// "Missing an app?" — the feature people need most when the answer is "nothing
+/// is wrong" but they still cannot find a window. Full width so it reads as the
+/// next step, not a footnote.
+private struct MissingAppButton: View {
+    let role: USButton.Role
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: "macwindow.on.rectangle")
+                    .accessibilityHidden(true)
+                Text("Missing an app?")
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(USButton(role: role, tint: tint))
+        .help("Choose the open app whose window you cannot see.")
+    }
+}
+
 // MARK: - Nothing is wrong
 //
 // This is the screen people see almost every time, so it gets the most care, not
@@ -229,6 +260,7 @@ private struct SupportLink: View {
 private struct AllWellPanel: View {
     let lastChecked: String
     let selectedAppStatus: (headline: String, detail: String)?
+    let onMissingApp: (() -> Void)?
     let onRecheck: () -> Void
     let onDismiss: () -> Void
 
@@ -276,14 +308,20 @@ private struct AllWellPanel: View {
             .offset(y: appeared ? 0 : 6)
             .usAnimation(appeared)
 
+            // When nothing is wrong, the likeliest reason someone opened this
+            // is a window they still cannot find, so that is the filled button.
+            if let onMissingApp {
+                MissingAppButton(role: .primary, tint: D.calm, action: onMissingApp)
+                    .padding(.top, 2)
+            }
+
             HStack(spacing: 11) {
-                // "Done" comes first and is the filled button, because when
-                // nothing is wrong the only thing left to do is close this.
-                // It must always be here: the rescue key can open this panel
-                // sticky, and a sticky panel whose only buttons are "Check
-                // again" and "Quit" is a trap — real users got stuck in exactly that.
+                // "Done" must always be here: the rescue key can open this
+                // panel sticky, and a sticky panel whose only buttons are
+                // "Check again" and "Quit" is a trap — real users got stuck in
+                // exactly that. It is filled only when there is no app list.
                 Button("Done", action: onDismiss)
-                    .buttonStyle(USButton(role: .primary, tint: D.calm))
+                    .buttonStyle(USButton(role: onMissingApp == nil ? .primary : .quiet, tint: D.calm))
                 Button("Check again", action: onRecheck)
                     .buttonStyle(USButton(role: .quiet))
                 Text(lastChecked)
@@ -316,6 +354,7 @@ private struct ProblemPanel: View {
     let finding: Finding
     let alsoFound: [Finding]
     let selectedAppStatus: (headline: String, detail: String)?
+    let onMissingApp: (() -> Void)?
     let onRepair: (Finding) -> Void
     let onDismiss: () -> Void
 
@@ -381,6 +420,12 @@ private struct ProblemPanel: View {
                     .buttonStyle(USButton(role: .quiet))
             }
             .padding(.top, 2)
+
+            // The fix stays the one filled button; this is the other way out
+            // when the problem shown is not the app they are looking for.
+            if let onMissingApp {
+                MissingAppButton(role: .quiet, tint: D.attention, action: onMissingApp)
+            }
 
             if let selectedAppStatus {
                 VStack(alignment: .leading, spacing: 4) {
