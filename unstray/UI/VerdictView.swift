@@ -138,9 +138,9 @@ struct VerdictView: View {
         return false
     }
 
-    private var canChooseApp: Bool {
-        WindowRescue.hasPermission
-    }
+    /// Whether rescue may move another app's windows. Injected only by the
+    /// offscreen renderer; the app always reads the live permission.
+    var canChooseApp: Bool = WindowRescue.hasPermission
 
     private var selectableApps: [NSRunningApplication] {
         NSWorkspace.shared.runningApplications
